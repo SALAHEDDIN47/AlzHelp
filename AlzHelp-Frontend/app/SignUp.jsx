@@ -7,9 +7,10 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  Pressable,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import { useRouter } from "expo-router"; // Importation du hook useRouter
+import { useNavigation } from "@react-navigation/native"; // Import ajouté
 
 export default function SignUp() {
   const [firstName, setFirstName] = useState("");
@@ -17,21 +18,43 @@ export default function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [userType, setUserType] = useState("patient");
+  const [birthDate, setBirthDate] = useState("");
+  const navigation = useNavigation(); // Initialisation de la navigation
 
-  const [birthDate, setBirthDate] = useState(""); // Date sous forme de chaîne
-  const [showDateInput, setShowDateInput] = useState(false);
-
-  const router = useRouter(); // Initialisation de router
-
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
+    // Validation des champs
     if (!firstName || !lastName || !email || !password || !birthDate) {
       Alert.alert("Erreur", "Veuillez remplir tous les champs");
       return;
     }
 
-    // Affichage d'un message de succès
-    Alert.alert("Succès", `Bienvenue ${firstName} (${userType}) !`);
-    router.push("/signin"); // Rediriger vers la page de connexion après inscription
+    try {
+      // Envoi des données au backend
+      const response = await fetch("http://10.0.2.2:3000/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          password,
+          userType,
+          birthDate,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Alert.alert("Succès", `Bienvenue ${data.first_name} !`);
+        navigation.navigate("SignIn"); // Redirection après succès
+      } else {
+        Alert.alert("Erreur", data.error || "Inscription échouée");
+      }
+    } catch (error) {
+      Alert.alert("Erreur", "Connexion au serveur impossible");
+      console.error(error);
+    }
   };
 
   return (
@@ -41,6 +64,7 @@ export default function SignUp() {
       <View style={styles.formBox}>
         <Text style={styles.title}>Créer un compte</Text>
 
+        {/* Champs du formulaire (inchangés) */}
         <TextInput
           style={styles.input}
           placeholder="Prénom"
@@ -67,7 +91,6 @@ export default function SignUp() {
           value={password}
           onChangeText={setPassword}
         />
-
         <TextInput
           style={styles.input}
           placeholder="Date de naissance (JJ/MM/AAAA)"
@@ -75,6 +98,7 @@ export default function SignUp() {
           onChangeText={setBirthDate}
         />
 
+        {/* Picker pour le type d'utilisateur */}
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={userType}
@@ -86,18 +110,20 @@ export default function SignUp() {
           </Picker>
         </View>
 
+        {/* Boutons */}
         <Button title="S'inscrire" onPress={handleSignUp} />
         <View style={{ marginTop: 10 }}>
-        <Button 
-    title="Connexion" 
-    onPress={() => navigation.navigate("SignIn")} 
-  />
+          <Button
+            title="Connexion"
+            onPress={() => navigation.navigate("SignIn")} // Navigation corrigée
+          />
         </View>
       </View>
     </View>
   );
 }
 
+// Styles (inchangés)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
