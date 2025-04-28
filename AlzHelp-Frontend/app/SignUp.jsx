@@ -1,55 +1,46 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Button,
-  StyleSheet,
-  Alert,
-  Platform,
-  Pressable,
-} from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import { useNavigation } from "@react-navigation/native"; // Import ajouté
+import { useRef, useEffect, useState } from "react";
+import { View, Text, TextInput, Alert, StyleSheet, Animated, TouchableOpacity } from "react-native";
+import { router } from "expo-router";
 
 export default function SignUp() {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [userType, setUserType] = useState("patient");
-  const [birthDate, setBirthDate] = useState("");
-  const navigation = useNavigation(); // Initialisation de la navigation
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    userType: "patient",
+    birthDate: "",
+  });
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const handleSignUp = async () => {
-    // Validation des champs
-    if (!firstName || !lastName || !email || !password || !birthDate) {
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const handleSubmit = async () => {
+    if (Object.values(form).some((value) => !value)) {
       Alert.alert("Erreur", "Veuillez remplir tous les champs");
       return;
     }
 
     try {
-      // Envoi des données au backend
       const response = await fetch("http://10.0.2.2:3000/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          password,
-          userType,
-          birthDate,
-        }),
+        body: JSON.stringify(form),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        Alert.alert("Succès", `Bienvenue ${data.first_name} !`);
-        navigation.navigate("SignIn"); // Redirection après succès
+        Alert.alert("Succès", "Inscription réussie !");
+        router.push("/SignIn");
       } else {
-        Alert.alert("Erreur", data.error || "Inscription échouée");
+        Alert.alert("Erreur", data.error || "Échec de l'inscription");
       }
     } catch (error) {
       Alert.alert("Erreur", "Connexion au serveur impossible");
@@ -58,117 +49,70 @@ export default function SignUp() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.appTitle}>AlzHelp</Text>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+      <Text style={styles.title}>Inscription</Text>
 
-      <View style={styles.formBox}>
-        <Text style={styles.title}>Créer un compte</Text>
-
-        {/* Champs du formulaire (inchangés) */}
-        <TextInput
-          style={styles.input}
-          placeholder="Prénom"
-          value={firstName}
-          onChangeText={setFirstName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Nom"
-          value={lastName}
-          onChangeText={setLastName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Mot de passe"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Date de naissance (JJ/MM/AAAA)"
-          value={birthDate}
-          onChangeText={setBirthDate}
-        />
-
-        {/* Picker pour le type d'utilisateur */}
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={userType}
-            onValueChange={(itemValue) => setUserType(itemValue)}
-          >
-            <Picker.Item label="Patient" value="patient" />
-            <Picker.Item label="Aidant" value="aidant" />
-            <Picker.Item label="Médecin" value="medecin" />
-          </Picker>
-        </View>
-
-        {/* Boutons */}
-        <Button title="S'inscrire" onPress={handleSignUp} />
-        <View style={{ marginTop: 10 }}>
-          <Button
-            title="Connexion"
-            onPress={() => navigation.navigate("SignIn")} // Navigation corrigée
+      {Object.keys(form).map((key) => (
+        key !== "userType" ? (
+          <TextInput
+            key={key}
+            style={styles.input}
+            placeholder={
+              key === "firstName" ? "Prénom" :
+              key === "lastName" ? "Nom" :
+              key === "birthDate" ? "Date de naissance (JJ/MM/AAAA)" : 
+              key.charAt(0).toUpperCase() + key.slice(1)
+            }
+            value={form[key]}
+            onChangeText={(text) => setForm({ ...form, [key]: text })}
+            secureTextEntry={key === "password"}
+            keyboardType={key === "email" ? "email-address" : "default"}
           />
-        </View>
-      </View>
-    </View>
+        ) : null
+      ))}
+
+      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+        <Text style={styles.buttonText}>S'inscrire</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.button} onPress={() => router.push("/SignIn")}>
+        <Text style={styles.buttonText}>Déjà un compte ? Se connecter</Text>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
-// Styles (inchangés)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    padding: 20,
+    justifyContent: "center",
     backgroundColor: "#35becf",
-    padding: 20,
-    paddingTop: 60,
-  },
-  appTitle: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "white",
-    alignSelf: "center",
-    marginBottom: 20,
-  },
-  formBox: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
   },
   title: {
-    fontSize: 22,
-    marginBottom: 15,
-    alignSelf: "center",
-    color: "#333",
+    fontSize: 28,
+    marginBottom: 20,
+    textAlign: "center",
+    color: "white",
+    fontWeight: "bold",
   },
   input: {
-    backgroundColor: "#f2f2f2",
-    padding: 12,
+    backgroundColor: "white",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 10,
     marginBottom: 15,
-    borderRadius: 8,
   },
-  pickerContainer: {
-    backgroundColor: "#f2f2f2",
-    borderRadius: 8,
-    marginBottom: 15,
+  button: {
+    backgroundColor: "white",
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginTop: 15,
+  },
+  buttonText: {
+    color: "#35becf",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });

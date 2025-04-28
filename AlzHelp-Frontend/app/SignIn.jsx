@@ -1,30 +1,29 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Button,
-  StyleSheet,
-  Alert,
-  Platform,
-  ActivityIndicator
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useRef, useEffect, useState } from "react";
+import { View, Text, TextInput, Button, Alert, ActivityIndicator, StyleSheet, Animated, TouchableOpacity } from "react-native";
+import { router } from "expo-router";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const navigation = useNavigation();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const handleSignIn = async () => {
     if (!email || !password) {
-      Alert.alert("Erreur", "Veuillez entrer un email et un mot de passe");
+      Alert.alert("Erreur", "Veuillez remplir tous les champs");
       return;
     }
 
     setIsLoading(true);
-    
+
     try {
       const response = await fetch("http://10.0.2.2:3000/api/auth/login", {
         method: "POST",
@@ -35,7 +34,7 @@ export default function SignIn() {
       const data = await response.json();
 
       if (response.ok) {
-        navigation.navigate("Home"); // Redirige vers l'écran principal après connexion
+        router.replace("/Home");
       } else {
         Alert.alert("Erreur", data.message || "Identifiants incorrects");
       }
@@ -48,96 +47,73 @@ export default function SignIn() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.appTitle}>AlzHelp</Text>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+      <Text style={styles.title}>Connexion</Text>
 
-      <View style={styles.formBox}>
-        <Text style={styles.title}>Connexion</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+      />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
+      <TextInput
+        style={styles.input}
+        placeholder="Mot de passe"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Mot de passe"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#35becf" />
+      ) : (
+        <>
+          <TouchableOpacity style={styles.button} onPress={handleSignIn}>
+            <Text style={styles.buttonText}>Se connecter</Text>
+          </TouchableOpacity>
 
-        {isLoading ? (
-          <ActivityIndicator size="large" color="#35becf" />
-        ) : (
-          <Button
-            title="Se connecter"
-            onPress={handleSignIn}
-            color="#35becf"
-          />
-        )}
-
-        <View style={styles.secondaryButtonContainer}>
-          <Button
-            title="Créer un compte"
-            onPress={() => navigation.navigate("SignUp")}
-            color="#666"
-          />
-        </View>
-      </View>
-    </View>
+          <TouchableOpacity style={styles.button} onPress={() => router.push("/SignUp")}>
+            <Text style={styles.buttonText}>Créer un compte</Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#35becf",
     padding: 20,
-    paddingTop: 60,
     justifyContent: "center",
-  },
-  appTitle: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "white",
-    alignSelf: "center",
-    marginBottom: 20,
-  },
-  formBox: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    backgroundColor: "#35becf",
   },
   title: {
-    fontSize: 22,
-    marginBottom: 15,
-    alignSelf: "center",
-    color: "#333",
+    fontSize: 28,
+    marginBottom: 20,
+    textAlign: "center",
+    color: "white",
+    fontWeight: "bold",
   },
   input: {
-    backgroundColor: "#f2f2f2",
-    padding: 12,
+    backgroundColor: "white",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 10,
     marginBottom: 15,
-    borderRadius: 8,
-    fontSize: 16,
   },
-  secondaryButtonContainer: {
-    marginTop: 10,
+  button: {
+    backgroundColor: "white",
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginTop: 15,
+  },
+  buttonText: {
+    color: "#35becf",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });
