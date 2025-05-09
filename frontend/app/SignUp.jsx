@@ -1,92 +1,177 @@
-import { useRef, useEffect, useState } from "react";
-import { View, Text, TextInput, Alert, StyleSheet, Animated, TouchableOpacity } from "react-native";
-import { router } from "expo-router";
+import { useState } from "react";
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  Alert, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView,
+  ActivityIndicator 
+} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SignUp() {
+  const { userType } = useLocalSearchParams();
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
+    nom: "",
+    prenom: "",
     email: "",
     password: "",
-    userType: "patient",
-    birthDate: "",
+    telephone: "",
+    dateNaissance: "",
+    id_lien: ""
   });
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-  }, []);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const handleSubmit = async () => {
-    if (Object.values(form).some((value) => !value)) {
-      Alert.alert("Erreur", "Veuillez remplir tous les champs");
+    if (!form.nom || !form.prenom || !form.email || !form.password) {
+      Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires");
       return;
     }
 
+    setIsLoading(true);
+    setIsSuccess(false);
+    
     try {
-      const response = await fetch("http://10.0.2.2:3000/api/auth/signup", {
+      const endpoint = userType === 'patient' 
+        ? "http://10.0.2.2:3000/api/patients/me" 
+        : "http://10.0.2.2:3000/api/aidants/me";
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, userType }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        Alert.alert("Succès", "Inscription réussie !");
-        router.push("/SignIn");
+        await AsyncStorage.setItem('token', data.token);
+        await AsyncStorage.setItem('userType', userType);
+        setIsSuccess(true);
+        
+        Alert.alert(
+          "Succès", 
+          "Inscription réussie !",
+          [{ text: "OK", onPress: () => router.replace("/SignIn") }]
+        );
       } else {
         Alert.alert("Erreur", data.error || "Échec de l'inscription");
       }
     } catch (error) {
+      console.error("Erreur:", error);
       Alert.alert("Erreur", "Connexion au serveur impossible");
-      console.error(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      <Text style={styles.title}>Inscription</Text>
+    <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <View style={styles.container}>
+        <Text style={styles.title}>
+          Inscription {userType === 'patient' ? 'Patient' : 'Aidant'}
+        </Text>
 
-      {Object.keys(form).map((key) => (
-        key !== "userType" ? (
-          <TextInput
-            key={key}
-            style={styles.input}
-            placeholder={
-              key === "firstName" ? "Prénom" :
-              key === "lastName" ? "Nom" :
-              key === "birthDate" ? "Date de naissance (JJ/MM/AAAA)" : 
-              key.charAt(0).toUpperCase() + key.slice(1)
-            }
-            value={form[key]}
-            onChangeText={(text) => setForm({ ...form, [key]: text })}
-            secureTextEntry={key === "password"}
-            keyboardType={key === "email" ? "email-address" : "default"}
-          />
-        ) : null
-      ))}
+        {isSuccess ? (
+          <View style={styles.successContainer}>
+            <Text style={styles.successText}>✓ Inscription réussie!</Text>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.requiredLabel}>* Champs obligatoires</Text>
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>S'inscrire</Text>
-      </TouchableOpacity>
+            <TextInput
+              style={styles.input}
+              placeholder="Nom *"
+              value={form.nom}
+              onChangeText={(text) => setForm({...form, nom: text})}
+            />
 
-      <TouchableOpacity style={styles.button} onPress={() => router.push("/SignIn")}>
-        <Text style={styles.buttonText}>Déjà un compte ? Se connecter</Text>
-      </TouchableOpacity>
-    </Animated.View>
+            <TextInput
+              style={styles.input}
+              placeholder="Prénom *"
+              value={form.prenom}
+              onChangeText={(text) => setForm({...form, prenom: text})}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Email *"
+              value={form.email}
+              onChangeText={(text) => setForm({...form, email: text})}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Mot de passe *"
+              value={form.password}
+              onChangeText={(text) => setForm({...form, password: text})}
+              secureTextEntry
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Téléphone"
+              value={form.telephone}
+              onChangeText={(text) => setForm({...form, telephone: text})}
+              keyboardType="phone-pad"
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Date de naissance (JJ/MM/AAAA)"
+              value={form.dateNaissance}
+              onChangeText={(text) => setForm({...form, dateNaissance: text})}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder={userType === 'patient' ? "ID de votre aidant" : "ID du patient"}
+              value={form.id_lien}
+              onChangeText={(text) => setForm({...form, id_lien: text})}
+            />
+
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="white" />
+                <Text style={styles.loadingText}>Traitement en cours...</Text>
+              </View>
+            ) : (
+              <TouchableOpacity 
+                style={styles.button} 
+                onPress={handleSubmit}
+                disabled={isLoading}
+              >
+                <Text style={styles.buttonText}>S'inscrire</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity 
+              style={styles.linkButton} 
+              onPress={() => router.push("/SignIn")}
+            >
+              <Text style={styles.linkText}>Déjà un compte ? Se connecter</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flexGrow: 1,
+  },
   container: {
     flex: 1,
     padding: 20,
-    justifyContent: "center",
     backgroundColor: "#35becf",
   },
   title: {
@@ -95,6 +180,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "white",
     fontWeight: "bold",
+  },
+  requiredLabel: {
+    color: "white",
+    marginBottom: 10,
+    fontStyle: "italic",
   },
   input: {
     backgroundColor: "white",
@@ -115,4 +205,33 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
   },
+  linkButton: {
+    marginTop: 15,
+  },
+  linkText: {
+    color: "white",
+    fontSize: 16,
+    textAlign: "center",
+    textDecorationLine: "underline",
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  loadingText: {
+    color: 'white',
+    marginTop: 10,
+  },
+  successContainer: {
+    backgroundColor: 'rgba(0, 200, 0, 0.2)',
+    padding: 15,
+    borderRadius: 10,
+    marginVertical: 20,
+    alignItems: 'center',
+  },
+  successText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 18,
+  }
 });

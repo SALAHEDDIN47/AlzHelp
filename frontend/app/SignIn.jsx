@@ -1,39 +1,28 @@
-import { useRef, useEffect, useState } from "react";
-import { View, Text, TextInput, Button, Alert, ActivityIndicator, StyleSheet, Animated, TouchableOpacity } from "react-native";
+import { useState } from "react";
+import { View, Text, TextInput, Alert, StyleSheet, TouchableOpacity } from "react-native";
 import { router } from "expo-router";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [userType, setUserType] = useState("patient");
   const [isLoading, setIsLoading] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-  }, []);
 
   const handleSignIn = async () => {
-    if (!email || !password) {
-      Alert.alert("Erreur", "Veuillez remplir tous les champs");
-      return;
-    }
-
     setIsLoading(true);
-
     try {
       const response = await fetch("http://10.0.2.2:3000/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, userType }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
+        await AsyncStorage.setItem('token', data.token);
+        await AsyncStorage.setItem('userType', userType);
         router.replace("/Home");
       } else {
         Alert.alert("Erreur", data.message || "Identifiants incorrects");
@@ -47,8 +36,24 @@ export default function SignIn() {
   };
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+    <View style={styles.container}>
       <Text style={styles.title}>Connexion</Text>
+
+      <View style={styles.radioContainer}>
+        <TouchableOpacity
+          style={[styles.radioButton, userType === 'patient' && styles.radioButtonActive]}
+          onPress={() => setUserType('patient')}
+        >
+          <Text style={[styles.radioText, userType === 'patient' && styles.radioTextActive]}>Patient</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.radioButton, userType === 'aidant' && styles.radioButtonActive]}
+          onPress={() => setUserType('aidant')}
+        >
+          <Text style={[styles.radioText, userType === 'aidant' && styles.radioTextActive]}>Aidant</Text>
+        </TouchableOpacity>
+      </View>
 
       <TextInput
         style={styles.input}
@@ -56,6 +61,7 @@ export default function SignIn() {
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
+        autoCapitalize="none"
       />
 
       <TextInput
@@ -67,19 +73,19 @@ export default function SignIn() {
       />
 
       {isLoading ? (
-        <ActivityIndicator size="large" color="#35becf" />
+        <ActivityIndicator size="large" color="white" />
       ) : (
         <>
           <TouchableOpacity style={styles.button} onPress={handleSignIn}>
             <Text style={styles.buttonText}>Se connecter</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.button} onPress={() => router.push("/SignUp")}>
-            <Text style={styles.buttonText}>Créer un compte</Text>
+          <TouchableOpacity style={styles.linkButton} onPress={() => router.push("/SignUp")}>
+            <Text style={styles.linkText}>Créer un compte</Text>
           </TouchableOpacity>
         </>
       )}
-    </Animated.View>
+    </View>
   );
 }
 
@@ -95,6 +101,29 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: "center",
     color: "white",
+    fontWeight: "bold",
+  },
+  radioContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  radioButton: {
+    padding: 10,
+    marginHorizontal: 5,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 5,
+  },
+  radioButtonActive: {
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#35becf",
+  },
+  radioText: {
+    color: "#666",
+  },
+  radioTextActive: {
+    color: "#35becf",
     fontWeight: "bold",
   },
   input: {
@@ -115,5 +144,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     textAlign: "center",
+  },
+  linkButton: {
+    marginTop: 15,
+  },
+  linkText: {
+    color: "white",
+    fontSize: 16,
+    textAlign: "center",
+    textDecorationLine: "underline",
   },
 });
