@@ -2,6 +2,7 @@ const Aidant = require('../models/Aidant');
 const Accompagnement = require('../models/Accompagnement');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const pool = require('../config/db');
 
 // Créer un aidant
 exports.createAidant = async (req, res) => {
@@ -38,7 +39,7 @@ exports.createAidant = async (req, res) => {
         email: aidant.email,
         telephone: aidant.telephone,
         dateNaissance: aidant.dateNaissance,
-        id_lien: aidant.id_lien
+        id_patient: aidant.id_patient
       }
     });
   } catch (error) {
@@ -72,7 +73,7 @@ exports.updateAidant = async (req, res) => {
     
     const query = `
       UPDATE aidants 
-      SET nomAidant = $1, prenomAidant = $2, telephAidant = $3
+      SET nomaidant = $1, prenomaidant = $2, telephaidant = $3
       WHERE id_aidant = $4
       RETURNING *`;
     const { rows } = await pool.query(query, [nom, prenom, telephone, id]);
@@ -106,3 +107,4 @@ exports.getCurrentAidant = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+

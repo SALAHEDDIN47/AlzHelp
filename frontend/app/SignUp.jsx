@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { 
-  View, 
-  Text, 
-  TextInput, 
-  Alert, 
-  StyleSheet, 
-  TouchableOpacity, 
+  View,
+  Text,
+  TextInput,
+  Alert,
+  StyleSheet,
+  TouchableOpacity,
   ScrollView,
-  ActivityIndicator 
+  ActivityIndicator
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,48 +26,43 @@ export default function SignUp() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!form.nom || !form.prenom || !form.email || !form.password) {
-      Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires");
-      return;
+  // Update the handleSubmit function:
+const handleSubmit = async () => {
+  if (!form.nom || !form.prenom || !form.email || !form.password) {
+    Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires");
+    return;
+  }
+
+  setIsLoading(true);
+  
+  try {
+    const endpoint = "http://10.0.2.2:3000/api/auth/register";
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, userType }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('userType', userType);
+      Alert.alert(
+        "Succès", 
+        "Inscription réussie !",
+        [{ text: "OK", onPress: () => router.replace("/SignIn") }]
+      );
+    } else {
+      Alert.alert("Erreur", data.error || "Échec de l'inscription");
     }
-
-    setIsLoading(true);
-    setIsSuccess(false);
-    
-    try {
-      const endpoint = userType === 'patient' 
-        ? "http://10.0.2.2:3000/api/patients/me" 
-        : "http://10.0.2.2:3000/api/aidants/me";
-
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, userType }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        await AsyncStorage.setItem('token', data.token);
-        await AsyncStorage.setItem('userType', userType);
-        setIsSuccess(true);
-        
-        Alert.alert(
-          "Succès", 
-          "Inscription réussie !",
-          [{ text: "OK", onPress: () => router.replace("/SignIn") }]
-        );
-      } else {
-        Alert.alert("Erreur", data.error || "Échec de l'inscription");
-      }
-    } catch (error) {
-      console.error("Erreur:", error);
-      Alert.alert("Erreur", "Connexion au serveur impossible");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error("Erreur:", error);
+    Alert.alert("Erreur", "Connexion au serveur impossible");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>

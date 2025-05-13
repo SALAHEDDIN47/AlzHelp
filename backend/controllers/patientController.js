@@ -2,30 +2,23 @@ const Patient = require('../models/Patient');
 const Accompagnement = require('../models/Accompagnement');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const pool = require('../config/db');
 
-// Créer un patient
 exports.createPatient = async (req, res) => {
   try {
     const { nom, prenom, email, password, telephone, dateNaissance, id_aidant } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
     
     const patient = await Patient.create(
-      nom, 
-      prenom, 
-      email, 
-      hashedPassword, 
-      telephone, 
-      dateNaissance, 
-      id_aidant
+      nom, prenom, email, hashedPassword, telephone, dateNaissance, id_aidant
     );
 
-    // Créer la relation d'accompagnement
     if(id_aidant) {
-      await Accompagnement.create(id_aidant, patient.id_patient);
+      await Accompagnement.create(id_aidant, patient.id);
     }
 
     const token = jwt.sign(
-      { id: patient.id_patient, type: 'patient' },
+      { id: patient.id, type: 'patient' },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -33,31 +26,19 @@ exports.createPatient = async (req, res) => {
     res.status(201).json({ 
       token,
       patient: {
-        id: patient.id_patient,
-        nom: patient.nomPatient,
-        prenom: patient.prenomPatient,
-        email: patient.emailPatient
+        id: patient.id,
+        nom: patient.nom,
+        prenom: patient.prenom,
+        email: patient.email
       }
     });
   } catch (error) {
+    console.error('Error in createPatient:', error);
     res.status(400).json({ error: error.message });
   }
 };
 
-// Obtenir les aidants d'un patient
-exports.getAidants = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const query = `
-      SELECT a.* FROM aidants a
-      JOIN accompagnements ac ON a.id_aidant = ac.id_aidant
-      WHERE ac.id_patient = $1`;
-    const { rows } = await pool.query(query, [id]);
-    res.json(rows);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
+// [Keep other methods the same but ensure field names match database]
 
 // Mettre à jour un patient
 exports.updatePatient = async (req, res) => {
@@ -67,7 +48,7 @@ exports.updatePatient = async (req, res) => {
     
     const query = `
       UPDATE patients 
-      SET nomPatient = $1, prenomPatient = $2, telephPatient = $3
+      SET nompatient = $1, prenompatient = $2, telephpatient = $3
       WHERE id_patient = $4
       RETURNING *`;
     const { rows } = await pool.query(query, [nom, prenom, telephone, id]);
@@ -97,6 +78,24 @@ exports.getCurrentPatient = async (req, res) => {
     }
     
     res.json(rows[0]);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+// Obtenir tous les aidants d’un patient
+exports.getAidants = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const query = `
+      SELECT a.*
+      FROM aidants a
+      JOIN accompagnements ac ON a.id_aidant = ac.id_aidant
+      WHERE ac.id_patient = $1
+    `;
+
+    const { rows } = await pool.query(query, [id]);
+    res.json(rows);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

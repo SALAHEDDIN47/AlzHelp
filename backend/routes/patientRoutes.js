@@ -5,8 +5,9 @@ const authMiddleware = require('../middlewares/auth');
 
 // Routes protégées par authentification
 router.post('/', patientController.createPatient);
+router.get('/me', authMiddleware, patientController.getCurrentPatient);
 router.get('/:id/aidants', authMiddleware, patientController.getAidants);
 router.put('/:id', authMiddleware, patientController.updatePatient);
-router.get('/me', authMiddleware, patientController.getCurrentPatient);
+
 
 module.exports = router;

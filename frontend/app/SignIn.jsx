@@ -9,31 +9,33 @@ export default function SignIn() {
   const [userType, setUserType] = useState("patient");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("http://10.0.2.2:3000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, userType }),
-      });
+  // Update the handleSignIn function:
+const handleSignIn = async () => {
+  setIsLoading(true);
+  try {
+    const response = await fetch("http://10.0.2.2:3000/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, userType }),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (response.ok) {
-        await AsyncStorage.setItem('token', data.token);
-        await AsyncStorage.setItem('userType', userType);
-        router.replace("/Home");
-      } else {
-        Alert.alert("Erreur", data.message || "Identifiants incorrects");
-      }
-    } catch (error) {
-      Alert.alert("Erreur", "Connexion au serveur impossible");
-      console.error(error);
-    } finally {
-      setIsLoading(false);
+    if (response.ok) {
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('userType', userType);
+      await AsyncStorage.setItem('userInfo', JSON.stringify(data.user));
+      router.replace("/Home");
+    } else {
+      Alert.alert("Erreur", data.error || "Identifiants incorrects");
     }
-  };
+  } catch (error) {
+    Alert.alert("Erreur", "Connexion au serveur impossible");
+    console.error(error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <View style={styles.container}>

@@ -8,26 +8,35 @@ export default function Home() {
   const [userInfo, setUserInfo] = useState(null);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      const token = await AsyncStorage.getItem('token');
-      const type = await AsyncStorage.getItem('userType');
-      setUserType(type);
+    // Update the fetchUserData function:
+const fetchUserData = async () => {
+  const token = await AsyncStorage.getItem('token');
+  const type = await AsyncStorage.getItem('userType');
+  setUserType(type);
 
-      try {
-        const endpoint = type === 'patient' 
-          ? "http://10.0.2.2:3000/api/patients/me" 
-          : "http://10.0.2.2:3000/api/aidants/me";
+  try {
+    const endpoint = type === 'patient' 
+      ? "http://10.0.2.2:3000/api/patients/me" 
+      : "http://10.0.2.2:3000/api/aidants/me";
 
-        const response = await fetch(endpoint, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
+    const response = await fetch(endpoint, {
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+    });
 
-        const data = await response.json();
-        setUserInfo(data);
-      } catch (error) {
-        console.error("Erreur de récupération des données:", error);
-      }
-    };
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    setUserInfo(data);
+  } catch (error) {
+    console.error("Fetch error:", error);
+    Alert.alert("Erreur", "Impossible de charger les données utilisateur");
+  }
+};
 
     fetchUserData();
   }, []);

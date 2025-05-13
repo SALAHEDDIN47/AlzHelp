@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const Patient = require('../models/Patient');
 const Aidant = require('../models/Aidant');
+const pool = require('../config/db');
 
 const register = async (req, res) => {
   try {
@@ -43,6 +44,7 @@ const register = async (req, res) => {
   }
 };
 
+
 const login = async (req, res) => {
   try {
     const { email, password, userType } = req.body;
@@ -54,9 +56,12 @@ const login = async (req, res) => {
       user = await Aidant.findByEmail(email);
     }
 
-    if (!user || !(await bcrypt.compare(password, user.mdpPatient || user.mdpAidant))) {
-      return res.status(401).json({ error: 'Identifiants incorrects' });
-    }
+    const hashedPassword = userType === 'patient' ? user.mdppatient : user.mdpaidant;
+
+if (!user || !(await bcrypt.compare(password, hashedPassword))) {
+  return res.status(401).json({ error: 'Identifiants incorrects' });
+}
+
 
     const token = jwt.sign(
       { id: user.id, type: userType },
@@ -64,10 +69,23 @@ const login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    res.json({ token, userType });
+    res.json({ 
+      token, 
+      userType,
+      user: {
+        id: user.id,
+        nom: user.nom,
+        prenom: user.prenom,
+        email: user.email
+      }
+    });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(400).json({ error: error.message });
   }
 };
 
+// [Keep register method but ensure field names match]
+
 module.exports = { register, login };
+
