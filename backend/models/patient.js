@@ -1,11 +1,11 @@
 const pool = require('../config/db');
 
 class Patient {
-  static async create(nom, prenom, email, mdp, telephone, dateNaissance, id_aidant) {
+  static async create(nom, prenom, email, mdp, telephone, dateNaissance, adress, niveau_maladie) {
     const query = `
       INSERT INTO patients 
-      (nompatient, prenompatient, emailpatient, mdppatient, telephpatient, datenaissance, id_aidant)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      (nompatient, prenompatient, emailpatient, mdppatient, telephpatient, datenaissance, adresspat, niveau_maladie)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING 
         id_patient as id,
         nompatient as nom,
@@ -13,8 +13,9 @@ class Patient {
         emailpatient as email,
         telephpatient as telephone,
         datenaissance as dateNaissance,
-        id_aidant`;
-    const values = [nom, prenom, email, mdp, telephone, dateNaissance, id_aidant];
+        adresspat as adress,
+        niveau_maladie as niveau_maladie`;
+    const values = [nom, prenom, email, mdp, telephone, dateNaissance, adress, niveau_maladie];
     const { rows } = await pool.query(query, values);
     return rows[0];
   }

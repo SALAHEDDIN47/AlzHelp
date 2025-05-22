@@ -9,27 +9,38 @@ exports.createPatient = async (req, res) => {
     const { nom, prenom, email, password, telephone, dateNaissance, id_aidant } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    const patient = await Patient.create(
-      nom, prenom, email, hashedPassword, telephone, dateNaissance, id_aidant
+    // Créer un patient dans la base de données
+    const patientResult = await pool.query(
+      `INSERT INTO patients (nompatient, prenompatient, emailpatient, mdppatient, telephpatient, datenaissance, id_aidant)
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id_patient`,
+      [nom, prenom, email, hashedPassword, telephone, dateNaissance, id_aidant]
     );
 
-    if(id_aidant) {
-      await Accompagnement.create(id_aidant, patient.id);
+    const patient = patientResult.rows[0];
+
+    // Si un aidant est fourni, ajouter la relation dans la table 'accompagnants'
+    if (id_aidant) {
+      await pool.query(
+        "INSERT INTO accompagnants (id_aidant, id_patient) VALUES ($1, $2)",
+        [id_aidant, patient.id_patient]
+      );
     }
 
+    // Générer un token pour le patient
     const token = jwt.sign(
-      { id: patient.id, type: 'patient' },
+      { id: patient.id_patient, type: 'patient' },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
+    // Répondre avec les informations du patient et le token
     res.status(201).json({ 
       token,
       patient: {
-        id: patient.id,
-        nom: patient.nom,
-        prenom: patient.prenom,
-        email: patient.email
+        id: patient.id_patient,
+        nom: patient.nompatient,
+        prenom: patient.prenompatient,
+        email: patient.emailpatient
       }
     });
   } catch (error) {
@@ -37,8 +48,6 @@ exports.createPatient = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
-
-// [Keep other methods the same but ensure field names match database]
 
 // Mettre à jour un patient
 exports.updatePatient = async (req, res) => {
@@ -58,17 +67,18 @@ exports.updatePatient = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
-// Ajouter cette nouvelle méthode
+
+// Récupérer les informations du patient actuel
 exports.getCurrentPatient = async (req, res) => {
   try {
     const query = `
       SELECT 
         id_patient as id,
-        nomPatient as nom,
-        prenomPatient as prenom,
-        emailPatient as email,
-        telephPatient as telephone,
-        dateNaissance
+        nompatient as nom,
+        prenompatient as prenom,
+        emailpatient as email,
+        telephpatient as telephone,
+        datenaissance
       FROM patients 
       WHERE id_patient = $1`;
     const { rows } = await pool.query(query, [req.userId]);
@@ -82,7 +92,8 @@ exports.getCurrentPatient = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
-// Obtenir tous les aidants d’un patient
+
+// Obtenir tous les aidants associés à un patient
 exports.getAidants = async (req, res) => {
   try {
     const { id } = req.params;
@@ -90,7 +101,7 @@ exports.getAidants = async (req, res) => {
     const query = `
       SELECT a.*
       FROM aidants a
-      JOIN accompagnements ac ON a.id_aidant = ac.id_aidant
+      JOIN accompagnants ac ON a.id_aidant = ac.id_aidant
       WHERE ac.id_patient = $1
     `;
 
@@ -100,3 +111,4 @@ exports.getAidants = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+

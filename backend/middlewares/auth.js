@@ -1,20 +1,20 @@
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
-module.exports = async (req, res, next) => {
-  try {
-    const authHeader = req.header('Authorization');
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Authorization header manquant' });
-    }
+function authenticate(req, res, next) {
+  const token = req.header('Authorization')?.split(' ')[1];
 
-    const token = authHeader.replace('Bearer ', '');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    req.userId = decoded.id;
-    req.userType = decoded.type;
-    
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Authentification invalide' });
+  if (!token) {
+    return res.status(401).json({ message: 'Accès refusé. Token manquant.' });
   }
-};
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(400).json({ message: 'Token invalide.' });
+  }
+}
+
+module.exports = authenticate;
