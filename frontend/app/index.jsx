@@ -1,10 +1,13 @@
-import { useRef, useEffect } from "react";
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Image } from "react-native";
+import React, { useRef, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 import { useRouter } from "expo-router";
+import { getPushNotificationToken, requestPermissions } from './notifications';  // Assurez-vous d'importer les bonnes fonctions
+import * as Notifications from 'expo-notifications'; // Pour gérer les notifications
 
 export default function Index() {
   const router = useRouter();
   const fadeAnim = useRef(new Animated.Value(0)).current; // Opacité de l'animation
+  const [token, setToken] = useState(null); // Déclaration d'un état pour le token
 
   useEffect(() => {
     // Lancer l'animation de fondu d'abord
@@ -14,6 +17,11 @@ export default function Index() {
       useNativeDriver: true,
     }).start();
 
+    // Demander les permissions et récupérer le token de notification push
+    requestPermissions().then(() => {
+      getPushNotificationToken().then(setToken);  // Sauvegarde du token
+    });
+
     // Rediriger automatiquement vers la page SignIn après un petit délai
     const timer = setTimeout(() => {
       router.replace("/SignIn");  // Redirection vers la page SignIn après l'animation
@@ -21,6 +29,33 @@ export default function Index() {
 
     return () => clearTimeout(timer); // Nettoyage du timer
   }, [fadeAnim, router]);
+
+  useEffect(() => {
+    if (token) {
+      // Afficher ou utiliser le token de notification ici si nécessaire
+      console.log("Token de notification push : ", token);
+      
+      // Vous pouvez aussi enregistrer ce token dans votre backend ou AsyncStorage ici
+    }
+  }, [token]);
+
+  // Gestion des notifications push reçues
+  useEffect(() => {
+    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+      console.log('Notification reçue:', notification);
+      // Gérer la notification reçue ici (son, affichage)
+    });
+
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('Réponse à la notification:', response);
+    });
+
+    // Nettoyage des listeners à la déconnexion du composant
+    return () => {
+      notificationListener.remove();
+      responseListener.remove();
+    };
+  }, []);
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
@@ -30,6 +65,7 @@ export default function Index() {
         style={styles.logo}
       />
       <Text style={styles.title}>Bienvenue sur AlzHelp</Text>
+      {token && <Text style={styles.tokenText}>Token de notification: {token}</Text>}  {/* Affichage du token si disponible */}
     </Animated.View>
   );
 }
@@ -52,6 +88,11 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     color: "#443C7C", // Violet foncé pour le texte
     fontWeight: "bold",
+  },
+  tokenText: {
+    fontSize: 18,
+    marginTop: 20,
+    color: "green",
   },
   button: {
     backgroundColor: "#5C9DFF", // Bleu clair pour les boutons

@@ -11,6 +11,7 @@ router.post('/addPatientForAidant', authController.addPatientForAidant);
 router.post('/', aidantController.createAidant);
 router.get('/me', authMiddleware, aidantController.getCurrentAidant); // mettre AVANT
 router.get('/:id/patients', authMiddleware, aidantController.getPatients);
+router.get('/patients/:id', authMiddleware,aidantController.getAidantsByPatient);
 router.put('/:id', authMiddleware, aidantController.updateAidant);
 router.post('/addPatientForAidant', addPatientForAidant);  // Route pour ajouter le patient à l'aidant
 module.exports = router;

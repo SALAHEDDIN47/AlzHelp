@@ -8,8 +8,12 @@ import {
   StyleSheet,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useRouter,useLocalSearchParams } from "expo-router";
 import { BASE_URL } from "../../utils/fetchNgrok"; // ← AJOUT ICI
+import * as Speech from 'expo-speech';
+
+
+// ... imports
 
 export default function ListeAidantsHorizontale() {
   const [aidants, setAidants] = useState([]);
@@ -19,10 +23,6 @@ export default function ListeAidantsHorizontale() {
     const fetchAidants = async () => {
       const token = await AsyncStorage.getItem("token");
       const userId = await AsyncStorage.getItem("userId");
-
-      console.log("📦 token récupéré :", token);
-      console.log("📦 patientId récupéré :", userId);
-
       try {
         const res = await fetch(`${BASE_URL}/api/aidants/patients/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -38,20 +38,25 @@ export default function ListeAidantsHorizontale() {
     fetchAidants();
   }, []);
 
+  const speakInfo = (aidant) => {
+    const age = new Date().getFullYear() - new Date(aidant.d_naissanceaidant).getFullYear();
+    const msg = `C'est ton aidant : ${aidant.prenomaidant} ${aidant.nomaidant}, son âge est ${age} ans. Pour le contacter, vous pouvez cliquer sur l'un des boutons devant vous.`;
+    Speech.speak(msg, { language: 'fr-FR' });
+  };
+
   const renderItem = ({ item }) => (
     <TouchableOpacity 
       style={styles.card}
       onPress={() => {
+        speakInfo(item);
         router.push({
-          pathname: "/../Home/patient/detailsAidant",
+          pathname: "../detailsAidant",
           params: { aidant: encodeURIComponent(JSON.stringify(item)) },
         });
       }}
     >
       <Image source={{ uri: item.image_url }} style={styles.image} />
-      <Text style={styles.name}>
-        {item.prenomaidant} 
-      </Text>
+      <Text style={styles.name}>{item.prenomaidant}</Text>
     </TouchableOpacity>
   );
 
@@ -74,31 +79,21 @@ export default function ListeAidantsHorizontale() {
 
 const styles = StyleSheet.create({
   container: {
-     marginLeft: 10 ,
-     marginRight:10,
-     marginBottom:10,
-     margintop:0,
-     backgroundColor:'#F1F8F8',
-     borderRadius: 40,
-     borderColor: "#007AFF",
-     borderWidth: 1,
-     elevation:20,
-     
-    },
-  title: { 
-    fontSize: 25, 
-    fontWeight: "bold", 
-    marginLeft: 15, 
-    marginBottom: 10, 
-    alignSelf:'center'
-   },
-  card: { 
-    margin:7,
+    marginLeft: 10,
+    marginRight: 10,
+    marginBottom: 10,
+    backgroundColor: '#F1F8F8',
+    borderRadius: 40,
+    borderColor: "#007AFF",
+    borderWidth: 1,
+    elevation: 20,
+  },
+  card: {
+    margin: 7,
     alignItems: "center",
-     marginLeft:3 ,
-     alignSelf:'center',
-    borderRadius: 40 ,
-    
+    marginLeft: 3,
+    alignSelf: 'center',
+    borderRadius: 40,
   },
   image: {
     width: 50,
@@ -106,7 +101,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     borderWidth: 2,
     borderColor: "#007AFF",
-    elevation:10,    
+    elevation: 10,
   },
   name: {
     fontSize: 13,
@@ -114,8 +109,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     width: 80,
   },
-  list:{
-    backgroundColor:'transparent',
-  }
+  list: {
+    backgroundColor: 'transparent',
+  },
 });
-

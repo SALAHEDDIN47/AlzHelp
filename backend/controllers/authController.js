@@ -12,9 +12,9 @@ const register = async (req, res) => {
     let user;
     if (userType === 'patient') {
       const result = await pool.query(
-        `INSERT INTO patients (nompatient, prenompatient, emailpatient, mdppatient, telephpatient, datenaissance, adresspat, niveau_maladie)
+        `INSERT INTO patients (nompatient, prenompatient, emailpatient, mdppatient, telephpatient, datenaissance, adresspat)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id_patient`,
-        [userData.nom, userData.prenom, userData.email, hashedPassword, userData.telephone, userData.dateNaissance, userData.adresse, userData.niveauMaladie]
+        [userData.nom, userData.prenom, userData.email, hashedPassword, userData.telephone, userData.dateNaissance, userData.adresse]
       );
       user = result.rows[0];
     } else if (userType === 'aidant') {
@@ -72,7 +72,7 @@ const login = async (req, res) => {
 
     // Vérification pour l'aidant : s'il a un patient associé
     if (userType === 'aidant') {
-      const result = await pool.query('SELECT * FROM accompagnants WHERE id_aidant = $1', [user.id_aidant]);
+      const result = await pool.query('SELECT * FROM accompagnements WHERE id_aidant = $1', [user.id_aidant]);
 
       if (result.rows.length === 0) {
         return res.json({
@@ -118,7 +118,7 @@ const addPatientForAidant = async (req, res) => {
 
     // Vérifier si la relation aidant-patient existe déjà
     const result = await pool.query(
-      "SELECT * FROM accompagnants WHERE id_aidant = $1 AND id_patient = $2",
+      "SELECT * FROM accompagnements WHERE id_aidant = $1 AND id_patient = $2",
       [aidantId, patientId]
     );
 
@@ -126,9 +126,9 @@ const addPatientForAidant = async (req, res) => {
       return res.status(400).json({ error: "Ce patient est déjà associé à cet aidant." });
     }
 
-    // Ajouter la relation aidant-patient dans la table accompagnants
+    // Ajouter la relation aidant-patient dans la table accompagnements
     await pool.query(
-      "INSERT INTO accompagnants (id_aidant, id_patient) VALUES ($1, $2)",
+      "INSERT INTO accompagnements (id_aidant, id_patient) VALUES ($1, $2)",
       [aidantId, patientId]
     );
 
@@ -145,7 +145,7 @@ const checkPatientForAidant = async (req, res) => {
 
   try {
     const result = await pool.query(
-      "SELECT * FROM accompagnants WHERE id_aidant = $1",
+      "SELECT * FROM accompagnements WHERE id_aidant = $1",
       [aidantId]
     );
 

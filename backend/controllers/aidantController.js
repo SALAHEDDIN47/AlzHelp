@@ -65,6 +65,55 @@ exports.getPatients = async (req, res) => {
   }
 };
 
+
+
+//obtenir les details d'un aidant d'un patient donné
+exports.getAidantsByPatient = async (req, res) => {
+  try {
+    const { id } = req.params;
+         const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+      
+    console.log("🔍 ID reçu dans getAidantsByPatient :", id);
+     if (!id) {
+      return res.status(400).json({ error: "Missing patient id" });
+    }
+
+    const query = `
+      SELECT a.id_aidant, a.nomaidant, a.prenomaidant, a.emailaidant, a.telephaidant,
+      CONCAT('${baseUrl}/', a.image_url) AS image_url, a.image_url, a.d_naissanceaidant, a.created_at
+      FROM aidants a
+      JOIN accompagnements ac ON a.id_aidant = ac.id_aidant
+      WHERE ac.id_patient = $1
+    `;
+
+    const { rows } = await pool.query(query, [id]);
+    res.json(rows);
+  } catch (error) {
+    console.error("Erreur getAidantsByPatient :", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+};
+
+
+// Mettre à jour un aidant
+exports.updateAidant = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nom, prenom, telephone } = req.body;
+    
+    const query = `
+      UPDATE aidants 
+      SET nomAidant = $1, prenomAidant = $2, telephAidant = $3
+      WHERE id_aidant = $4
+      RETURNING *`;
+    const { rows } = await pool.query(query, [nom, prenom, telephone, id]);
+    
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 // Mettre à jour un aidant
 exports.updateAidant = async (req, res) => {
   try {

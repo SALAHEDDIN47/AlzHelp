@@ -5,12 +5,14 @@ const authRoutes = require('./routes/authRoutes');
 const aidantRoutes = require('./routes/aidantRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 const pool = require('./config/db');
-
+const rappelsRoutes = require('./routes/rappelsRoutes'); // Import des routes
 const app = express();
+const { cronJob } = require('./cronJob');  // Assurez-vous que le chemin est correct
 
 app.use(cors());
 app.use(express.json());
-
+cronJob;
+app.use('/api/rappels', rappelsRoutes);
 // Test DB connection
 pool.query('SELECT NOW()', (err) => {
   if (err) {
@@ -41,4 +43,7 @@ app.listen(PORT, () => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something broke!' });
+});
+app.listen(3000, () => {
+  console.log('Serveur démarré sur le port 3000');
 });

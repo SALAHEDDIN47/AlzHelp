@@ -10,10 +10,10 @@ export default function RootLayout() {
       
       {/* Routes spécifiques aux aidants et patients */}
 
-      <Stack.Screen name="Home/aidant/addPatient" />
-      <Stack.Screen name="Home/aidant/AccueilAidant" />
-       <Stack.Screen name="Home/aidant/indexAidant" />
-       <Stack.Screen name="Home/patient/index" />
+      <Stack.Screen name="addPatient" />
+      <Stack.Screen name="AccueilAidant" />
+       <Stack.Screen name="indexAidant" />
+       <Stack.Screen name="indexPatient" />
     </Stack>
   );
 }

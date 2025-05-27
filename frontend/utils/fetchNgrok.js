@@ -6,7 +6,7 @@ export const fetchWithToken = async (endpoint, token, options = {}) => {
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       ...options,
-      method: 'GET',
+      method: options.method || 'GET',
       headers: {
         ...(options.headers || {}),
         'Content-Type': 'application/json',
