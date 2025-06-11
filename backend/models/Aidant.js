@@ -4,7 +4,7 @@ class Aidant {
   static async create(nom, prenom, email, mdp, telephone, dateNaissance, lienFamilial) {
     const query = `
       INSERT INTO aidants 
-      (nomaidant, prenomaidant, emailaidant, mdpaidant, telephaidant, d_naissanceaidant,lien_familial )
+      (nomaidant, prenomaidant, emailaidant, mdpaidant, telephaidant, d_naissanceaidant,lienfamilial )
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING 
         id_aidant as id,

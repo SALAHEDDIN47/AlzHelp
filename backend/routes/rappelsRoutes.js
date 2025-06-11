@@ -8,5 +8,7 @@ const { verifyToken } = require('../middlewares/authJWT');
 
 
 router.get('/thisrappels', verifyToken, getRappelsForLoggedInPatient);
+router.put('/:id_rappel/pin', verifyToken,rappelsController.togglePin);
+router.put('/:id_rappel/confirm', verifyToken,rappelsController.toggleConfirm)
 
 module.exports = router;

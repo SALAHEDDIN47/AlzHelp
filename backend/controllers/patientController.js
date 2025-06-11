@@ -18,10 +18,10 @@ exports.createPatient = async (req, res) => {
 
     const patient = patientResult.rows[0];
 
-    // Si un aidant est fourni, ajouter la relation dans la table 'accompagnants'
+    // Si un aidant est fourni, ajouter la relation dans la table 'accompagnements'
     if (id_aidant) {
       await pool.query(
-        "INSERT INTO accompagnants (id_aidant, id_patient) VALUES ($1, $2)",
+        "INSERT INTO accompagnements (id_aidant, id_patient) VALUES ($1, $2)",
         [id_aidant, patient.id_patient]
       );
     }
@@ -101,7 +101,7 @@ exports.getAidants = async (req, res) => {
     const query = `
       SELECT a.*
       FROM aidants a
-      JOIN accompagnants ac ON a.id_aidant = ac.id_aidant
+      JOIN accompagnements ac ON a.id_aidant = ac.id_aidant
       WHERE ac.id_patient = $1
     `;
 

@@ -3,7 +3,7 @@ import { View, Text, TextInput, Alert, StyleSheet, TouchableOpacity, ScrollView,
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import { Picker } from '@react-native-picker/picker';
+import { Ionicons } from "@expo/vector-icons";
 
 export default function SignUp() {
   const { userType } = useLocalSearchParams();
@@ -15,42 +15,42 @@ export default function SignUp() {
     confirmPassword: "",
     telephone: "",
     dateNaissance: "",
-    lienFamilial: "",      // pour aidant
-    adresse: "",           // pour patient
-    niveauMaladie: "léger", // Valeur par défaut
+    lienFamilial: "",
+    adresse: "",
   });
+  
+  const [errors, setErrors] = useState({
+    nom: "",
+    prenom: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    telephone: "",
+    dateNaissance: "",
+    lienFamilial: "",
+    adresse: "",
+  });
+
   const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Fonction pour afficher le calendrier
-  const showDatePicker = () => {
-    setDatePickerVisibility(true);
-  };
-
-  const hideDatePicker = () => {
-    setDatePickerVisibility(false);
-  };
+  const showDatePicker = () => setDatePickerVisibility(true);
+  const hideDatePicker = () => setDatePickerVisibility(false);
 
   const handleConfirm = (date) => {
-    const formattedDate = date.toLocaleDateString("fr-FR"); // Format de date français
+    const formattedDate = date.toLocaleDateString("fr-FR");
     setForm({ ...form, dateNaissance: formattedDate });
+    setErrors({...errors, dateNaissance: ""});
     hideDatePicker();
   };
 
-  // Fonction de soumission du formulaire
-  const handleSubmit = async () => {
-    console.log("Formulaire soumis");
-    if (!form.nom || !form.prenom || !form.email || !form.password) {
-      console.log("Champs manquants");
-      Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires");
-      return;
-    }
-
+  const validateForm = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^(?:\+212|0)([5-7]\d{8})$/;
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-    const nameRegex = /^[A-Za-z]+$/; 
+    const passwordRegex = /^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[\W_]).{8,}$/;
+    const nameRegex = /^[A-Za-z]+$/;
     const dateRegex = /^(0[1-9]|[12][0-9]|3[01])[\/\-](0[1-9]|1[0-2])[\/\-](19|20)\d{2}$/;
 
     function isValidDate(dateStr) {
@@ -63,49 +63,102 @@ export default function SignUp() {
       );
     }
 
-    if (!nameRegex.test(form.nom) || !nameRegex.test(form.prenom)) {
-      Alert.alert("Erreur", "Les noms ne peuvent contenir que des lettres.");
-      return;
+    const newErrors = {
+      nom: "",
+      prenom: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      telephone: "",
+      dateNaissance: "",
+      lienFamilial: "",
+      adresse: "",
+    };
+
+    let isValid = true;
+
+    // Validation du nom
+    if (!form.nom.trim()) {
+      newErrors.nom = "Le nom est obligatoire";
+      isValid = false;
+    } else if (!nameRegex.test(form.nom)) {
+      newErrors.nom = "Le nom ne peut contenir que des lettres";
+      isValid = false;
     }
 
-    if (!emailRegex.test(form.email)) {
-      Alert.alert("Erreur", "Adresse email invalide");
-      return;
+    // Validation du prénom
+    if (!form.prenom.trim()) {
+      newErrors.prenom = "Le prénom est obligatoire";
+      isValid = false;
+    } else if (!nameRegex.test(form.prenom)) {
+      newErrors.prenom = "Le prénom ne peut contenir que des lettres";
+      isValid = false;
     }
 
+    // Validation de l'email
+    if (!form.email.trim()) {
+      newErrors.email = "L'email est obligatoire";
+      isValid = false;
+    } else if (!emailRegex.test(form.email)) {
+      newErrors.email = "Adresse email invalide";
+      isValid = false;
+    }
+
+    // Validation du mot de passe
+    if (!form.password) {
+      newErrors.password = "Le mot de passe est obligatoire";
+      isValid = false;
+    } else if (!passwordRegex.test(form.password)) {
+      newErrors.password = "8 caractères min, majuscule, minuscule, chiffre, spécial";
+      isValid = false;
+    }
+
+    // Validation de la confirmation du mot de passe
+    if (!form.confirmPassword) {
+      newErrors.confirmPassword = "Confirmez votre mot de passe";
+      isValid = false;
+    } else if (form.password !== form.confirmPassword) {
+      newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
+      isValid = false;
+    }
+
+    // Validation du téléphone
     if (form.telephone && !phoneRegex.test(form.telephone)) {
-      Alert.alert("Erreur", "Numéro de téléphone invalide");
-      return;
+      newErrors.telephone = "Numéro de téléphone invalide";
+      isValid = false;
     }
 
-    if (!passwordRegex.test(form.password)) {
-      Alert.alert("Erreur", "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial");
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
-      Alert.alert("Erreur", "Les mots de passe ne correspondent pas");
-      return;
-    }
-
+    // Validation de la date de naissance
     if (form.dateNaissance) {
       if (!dateRegex.test(form.dateNaissance)) {
-        Alert.alert("Erreur", "Format de date invalide (JJ/MM/AAAA)");
-        return;
-      }
-      if (!isValidDate(form.dateNaissance)) {
-        Alert.alert("Erreur", "Date de naissance invalide");
-        return;
+        newErrors.dateNaissance = "Format invalide (JJ/MM/AAAA)";
+        isValid = false;
+      } else if (!isValidDate(form.dateNaissance)) {
+        newErrors.dateNaissance = "Date invalide";
+        isValid = false;
       }
     }
 
-    if (userType === 'aidant' && !form.lienFamilial) {
-      Alert.alert("Erreur", "Veuillez préciser le lien familial");
-      return;
+    // Validation spécifique aux aidants
+    if (userType === 'aidant' && !form.lienFamilial.trim()) {
+      newErrors.lienFamilial = "Le lien familial est obligatoire";
+      isValid = false;
     }
 
-    if (userType === 'patient' && (!form.adresse || !form.niveauMaladie)) {
-      Alert.alert("Erreur", "Veuillez remplir l'adresse et le niveau de la maladie");
+    // Validation spécifique aux patients
+    if (userType === 'patient') {
+      if (!form.adresse.trim()) {
+        newErrors.adresse = "L'adresse est obligatoire";
+        isValid = false;
+      }
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) {
       return;
     }
 
@@ -149,6 +202,10 @@ export default function SignUp() {
     }
   };
 
+  const ErrorText = ({ error }) => (
+    error ? <Text style={styles.errorText}>{error}</Text> : null
+  );
+
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.container}>
@@ -156,204 +213,275 @@ export default function SignUp() {
           Inscription {userType === 'patient' ? 'Patient' : 'Aidant'}
         </Text>
 
-        {isSuccess ? (
-          <View style={styles.successContainer}>
-            <Text style={styles.successText}>✓ Inscription réussie!</Text>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.requiredLabel}>* Champs obligatoires</Text>
+        <Text style={styles.requiredLabel}>* Champs obligatoires</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Nom *"
-              value={form.nom}
-              onChangeText={(text) => setForm({...form, nom: text})}
-            />
+        <View>
+          <TextInput
+            style={[styles.input, errors.nom && styles.inputError]}
+            placeholder="Nom *"
+            value={form.nom}
+            onChangeText={(text) => {
+              setForm({...form, nom: text});
+              if (errors.nom) setErrors({...errors, nom: ""});
+            }}
+          />
+          <ErrorText error={errors.nom} />
+        </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Prénom *"
-              value={form.prenom}
-              onChangeText={(text) => setForm({...form, prenom: text})}
-            />
+        <View>
+          <TextInput
+            style={[styles.input, errors.prenom && styles.inputError]}
+            placeholder="Prénom *"
+            value={form.prenom}
+            onChangeText={(text) => {
+              setForm({...form, prenom: text});
+              if (errors.prenom) setErrors({...errors, prenom: ""});
+            }}
+          />
+          <ErrorText error={errors.prenom} />
+        </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Email *"
-              value={form.email}
-              onChangeText={(text) => setForm({...form, email: text})}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+        <View>
+          <TextInput
+            style={[styles.input, errors.email && styles.inputError]}
+            placeholder="Email *"
+            value={form.email}
+            onChangeText={(text) => {
+              setForm({...form, email: text});
+              if (errors.email) setErrors({...errors, email: ""});
+            }}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <ErrorText error={errors.email} />
+        </View>
 
+        <View>
+          <View style={[styles.passwordContainer, errors.password && styles.inputError]}>
             <TextInput
-              style={styles.input}
+              style={styles.passwordInput}
               placeholder="Mot de passe *"
               value={form.password}
-              onChangeText={(text) => setForm({...form, password: text})}
-              secureTextEntry
+              onChangeText={(text) => {
+                setForm({...form, password: text});
+                if (errors.password) setErrors({...errors, password: ""});
+              }}
+              secureTextEntry={!showPassword}
             />
+            <TouchableOpacity 
+              onPress={() => setShowPassword(!showPassword)}
+              style={styles.eyeButton}
+            >
+              <Ionicons
+                name={showPassword ? "eye-off" : "eye"}
+                size={24}
+                color="#888"
+              />
+            </TouchableOpacity>
+          </View>
+          <ErrorText error={errors.password} />
+        </View>
 
+        <View>
+          <View style={[styles.passwordContainer, errors.confirmPassword && styles.inputError]}>
             <TextInput
-              style={styles.input}
+              style={styles.passwordInput}
               placeholder="Confirmer le mot de passe *"
               value={form.confirmPassword}
-              onChangeText={(text) => setForm({...form, confirmPassword: text})}
-              secureTextEntry
+              onChangeText={(text) => {
+                setForm({...form, confirmPassword: text});
+                if (errors.confirmPassword) setErrors({...errors, confirmPassword: ""});
+              }}
+              secureTextEntry={!showConfirmPassword}
             />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Téléphone"
-              value={form.telephone}
-              onChangeText={(text) => setForm({...form, telephone: text})}
-              keyboardType="phone-pad"
-            />
-
-            {/* Date Picker */}
-            <TouchableOpacity onPress={showDatePicker}>
-              <TextInput
-                style={styles.input}
-                placeholder="Date de naissance"
-                value={form.dateNaissance}
-                editable={false} // Ne peut pas être modifié manuellement
-              />
-            </TouchableOpacity>
-            <DateTimePickerModal
-              isVisible={isDatePickerVisible}
-              mode="date"
-              onConfirm={handleConfirm}
-              onCancel={hideDatePicker}
-              maximumDate={new Date()} // On limite la sélection à la date actuelle
-            />
-
-            {userType === 'aidant' && (
-              <TextInput
-                style={styles.input}
-                placeholder="Lien familial avec le patient *"
-                value={form.lienFamilial}
-                onChangeText={(text) => setForm({...form, lienFamilial: text})}
-              />
-            )}
-
-            {userType === 'patient' && (
-              <>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Adresse *"
-                  value={form.adresse}
-                  onChangeText={(text) => setForm({...form, adresse: text})}
-                />
-              </>
-            )}
-
-            {/* Liste déroulante niveauMaladie uniquement pour les patients */}
-            {userType === 'patient' && (
-              <>
-                <Text style={styles.label}>Niveau de la maladie *</Text>
-                <Picker
-                  selectedValue={form.niveauMaladie}
-                  style={styles.picker}
-                  onValueChange={(itemValue) => setForm({...form, niveauMaladie: itemValue})}
-                >
-                  <Picker.Item label="Sélectionnez un niveau" value="" />
-                  <Picker.Item label="Léger" value="léger" />
-                  <Picker.Item label="Modéré" value="modéré" />
-                  <Picker.Item label="Avancé" value="avancé" />
-                </Picker>
-              </>
-            )}
-
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="white" />
-                <Text style={styles.loadingText}>Traitement en cours...</Text>
-              </View>
-            ) : (
-              <TouchableOpacity 
-                style={styles.button} 
-                onPress={handleSubmit}
-                disabled={isLoading}
-              >
-                <Text style={styles.buttonText}>S'inscrire</Text>
-              </TouchableOpacity>
-            )}
-
             <TouchableOpacity 
-              style={styles.linkButton} 
-              onPress={() => router.push("/SignIn")}
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={styles.eyeButton}
             >
-              <Text style={styles.linkText}>Déjà un compte ? Se connecter</Text>
+              <Ionicons
+                name={showConfirmPassword ? "eye-off" : "eye"}
+                size={24}
+                color="#888"
+              />
             </TouchableOpacity>
+          </View>
+          <ErrorText error={errors.confirmPassword} />
+        </View>
+
+        <View>
+          <TextInput
+            style={[styles.input, errors.telephone && styles.inputError]}
+            placeholder="Téléphone"
+            value={form.telephone}
+            onChangeText={(text) => {
+              setForm({...form, telephone: text});
+              if (errors.telephone) setErrors({...errors, telephone: ""});
+            }}
+            keyboardType="phone-pad"
+          />
+          <ErrorText error={errors.telephone} />
+        </View>
+
+        <View>
+          <TouchableOpacity onPress={showDatePicker}>
+            <TextInput
+              style={[styles.input, errors.dateNaissance && styles.inputError]}
+              placeholder="Date de naissance"
+              value={form.dateNaissance}
+              editable={false}
+            />
+          </TouchableOpacity>
+          <ErrorText error={errors.dateNaissance} />
+        </View>
+
+        <DateTimePickerModal
+          isVisible={isDatePickerVisible}
+          mode="date"
+          onConfirm={handleConfirm}
+          onCancel={hideDatePicker}
+          maximumDate={new Date()}
+        />
+
+        {userType === 'aidant' && (
+          <View>
+            <TextInput
+              style={[styles.input, errors.lienFamilial && styles.inputError]}
+              placeholder="Lien familial avec le patient *"
+              value={form.lienFamilial}
+              onChangeText={(text) => {
+                setForm({...form, lienFamilial: text});
+                if (errors.lienFamilial) setErrors({...errors, lienFamilial: ""});
+              }}
+            />
+            <ErrorText error={errors.lienFamilial} />
+          </View>
+        )}
+
+        {userType === 'patient' && (
+          <>
+            <View>
+              <TextInput
+                style={[styles.input, errors.adresse && styles.inputError]}
+                placeholder="Adresse *"
+                value={form.adresse}
+                onChangeText={(text) => {
+                  setForm({...form, adresse: text});
+                  if (errors.adresse) setErrors({...errors, adresse: ""});
+                }}
+              />
+              <ErrorText error={errors.adresse} />
+            </View>
           </>
         )}
+
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="white" />
+            <Text style={styles.loadingText}>Traitement en cours...</Text>
+          </View>
+        ) : (
+          <TouchableOpacity 
+            style={styles.button} 
+            onPress={handleSubmit}
+            disabled={isLoading}
+          >
+            <Text style={styles.buttonText}>S'inscrire</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity 
+          style={styles.linkButton} 
+          onPress={() => router.push("/SignIn")}
+        >
+          <Text style={styles.linkText}>Déjà un compte ? Se connecter</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: {
+  scrollContainer: { 
     flexGrow: 1,
+    paddingBottom: 20,
   },
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: "#FFFFFF",  // Fond blanc clair
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: "#FFFFFF" 
   },
-  title: {
-    fontSize: 28,
-    marginBottom: 20,
-    textAlign: "center",
-    color: "#443C7C",  // Violet foncé pour le texte du titre
-    fontWeight: "bold",
+  title: { 
+    fontSize: 28, 
+    marginBottom: 20, 
+    textAlign: "center", 
+    color: "#443C7C", 
+    fontWeight: "bold" 
   },
-  requiredLabel: {
-    color: "#443C7C",  // Violet foncé
-    marginBottom: 10,
-    fontStyle: "italic",
+  requiredLabel: { 
+    color: "#443C7C", 
+    marginBottom: 10, 
+    fontStyle: "italic" 
   },
-  label: {
-    color: "#443C7C",  // Violet foncé
-    fontSize: 16,
-    marginBottom: 5,
+  label: { 
+    color: "#443C7C", 
+    fontSize: 16, 
+    marginBottom: 10 
   },
   picker: {
-    backgroundColor: "white",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    backgroundColor: "white", 
+    paddingHorizontal: 15, 
+    paddingVertical: 10, 
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#d1d1d1", // Bordure claire
+    borderWidth: 1, 
+    borderColor: "#d1d1d1", 
     marginBottom: 15,
   },
   input: {
+    backgroundColor: "white", 
+    paddingHorizontal: 15, 
+    paddingVertical: 10, 
+    borderRadius: 10,
+    marginBottom: 10, 
+    borderWidth: 1, 
+    borderColor: "#d1d1d1",
+  },
+  inputError: {
+    borderColor: 'red',
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#d1d1d1",
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  passwordInput: {
+    flex: 1,
     paddingHorizontal: 15,
     paddingVertical: 10,
-    borderRadius: 10,
-    marginBottom: 15,
-    borderWidth: 1,  // Bordure claire
-    borderColor: "#d1d1d1",  // Bordure claire
+  },
+  eyeButton: {
+    padding: 10,
   },
   button: {
-    backgroundColor: "#5C9DFF",  // Bleu clair pour les boutons
+    backgroundColor: "#5C9DFF",
     paddingVertical: 12,
     borderRadius: 25,
     marginTop: 15,
   },
   buttonText: {
-    color: "#FFFFFF",  // Texte blanc dans le bouton
-    fontSize: 16,
-    fontWeight: "bold",
+    color: "#FFFFFF", 
+    fontSize: 16, 
+    fontWeight: "bold", 
     textAlign: "center",
   },
-  linkButton: {
-    marginTop: 15,
+  linkButton: { 
+    marginTop: 15 
   },
   linkText: {
-    color: "#7A85D6",  // Teinte intermédiaire de bleu-violet pour les liens secondaires
+    color: "#7A85D6",
     fontSize: 16,
     textAlign: "center",
     textDecorationLine: "underline",
@@ -363,7 +491,13 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   loadingText: {
-    color: 'white',
+    color: 'black',
     marginTop: 10,
   },
-});
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginBottom: 10,
+    marginTop: -5,
+  },
+}); 

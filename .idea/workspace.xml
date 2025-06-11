@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="e50d3058-a393-4273-9567-2129f21bfd07" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/config/db.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/config/db.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/controllers/authController.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/controllers/authController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/controllers/patientController.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/controllers/patientController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/controllers/rappelsController.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/controllers/rappelsController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/models/Aidant.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/models/Aidant.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/models/patient.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/models/patient.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/node_modules/.package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/node_modules/.package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/routes/authRoutes.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/authRoutes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/routes/patientRoutes.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/patientRoutes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/routes/rappelsRoutes.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/rappelsRoutes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/server.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/Home/aidant/AccueilAidant.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/Home/aidant/_layout.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/Home/aidant/addPatient.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/Home/aidant/indexAidant.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/Home/aidant/patients.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/Home/aidant/profileAidant.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/Home/patient/_layout.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/Home/patient/detailsAidant.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/Home/patient/index.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/Home/patient/profile.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/Home/patient/sos.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/SignIn.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/SignIn.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/SignUp.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/SignUp.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/_layout.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/_layout.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/components/CustomnavBar.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/components/RappelsPatient.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/components/RappelsPatient.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/index.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/index.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/tsconfig.json" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 6
+}]]></component>
+  <component name="ProjectId" id="2yHW68GDk8wX4zQ76pCKcgVZv4U" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "master",
+    "kotlin-language-version-configured": "true"
+  }
+}]]></component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="e50d3058-a393-4273-9567-2129f21bfd07" name="Changes" comment="" />
+      <created>1749491810457</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1749491810457</updated>
+    </task>
+    <servers />
+  </component>
+</project>

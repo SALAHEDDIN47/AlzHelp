@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BASE_URL } from '../../utils/fetchNgrok'; // ← AJOUT
+import { BASE_URL, fetchWithToken } from '../../utils/fetchNgrok'; // ← AJOUT
 
 const RappelsPatient = () => {
   const [rappels, setRappels] = useState([]);
