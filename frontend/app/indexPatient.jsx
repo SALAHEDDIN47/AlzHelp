@@ -43,7 +43,7 @@ const capitalizeFullName = (fullName) => {
       const userFirstName = await AsyncStorage.getItem('userFirstName');
       const userLastName = await AsyncStorage.getItem('userLastName');
 
-
+      console.log(userFirstName);
       console.log(userLastName);
       setUser({ id: userId, nom: userLastName, prenom:userFirstName});
 
@@ -81,15 +81,25 @@ const capitalizeFullName = (fullName) => {
     Speech.speak(text, { language: 'fr-FR' });
   };
 
-  const speakCurrentDate = () => {
-    const day = currentTime.toLocaleDateString('fr-FR', { weekday: 'long' });
-    speak(`Aujourd'hui, nous sommes ${day}`);
-  };
+const speakCurrentDate = () => {
+  const jour = currentTime.toLocaleDateString('fr-FR', { weekday: 'long' });
+  const date = currentTime.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+   const hours = currentTime.getHours();
+  const minutes = currentTime.getMinutes();
+  const heureTexte = `${hours} heure${hours > 1 ? 's' : ''} ${minutes > 0 ? minutes : ''}`;
+  speak(`Aujourd'hui, nous sommes ${jour} ${date}, maintenant il est ${heureTexte}`);
+};
 
-  const speakCurrentTime = () => {
-    const time = currentTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    speak(`Il est ${time}`);
-  };
+
+/*Speack pour l heure seule:
+const speakCurrentTime = () => {
+  const hours = currentTime.getHours();
+  const minutes = currentTime.getMinutes();
+  const heureTexte = `${hours} heure${hours > 1 ? 's' : ''} ${minutes > 0 ? minutes : ''}`;
+  
+  speak(`Il est ${heureTexte}`);
+};*/
+
 
 const rappelDans24h = rappels.filter(r => {
   const [h, m] = r.heure_rappel.split(':');
@@ -110,7 +120,7 @@ const sortedRappels = rappelDans24h.sort((a, b) => {
   return da - db;
 });
 
-const nextRappel = sortedRappels.find(r => r.type_rappel !== 'Médicament');
+const nextRappel = sortedRappels[0];
 const nextMedicament = sortedRappels.find(r => r.type_rappel === 'Médicament');
 
 
@@ -165,7 +175,7 @@ const renderRappelBox = (rappel, color, labelColor, barColor) => {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={speakCurrentTime}>
+        <TouchableOpacity onPress={speakCurrentDate}>
           <Text style={styles.timeText}>
             {currentTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
           </Text>

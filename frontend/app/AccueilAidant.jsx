@@ -18,6 +18,9 @@ export default function AccueilAidant() {
   const handleProfile = () => {
     router.push("/profileAidant");
   };
+    const handleRappels = () => {
+    router.push("/GestionRappels");
+  };
 
   return (
     <View style={styles.container}>
@@ -25,7 +28,7 @@ export default function AccueilAidant() {
       <TouchableOpacity style={styles.button} onPress={handleProfile}>
         <Text style={styles.buttonText}>Mon Profil</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity style={styles.button} onPress={handleRappels}>
         <Text style={styles.buttonText}>Gérer les Patients</Text>
       </TouchableOpacity>
     </View>

@@ -35,7 +35,11 @@ export default function SignIn() {
         await AsyncStorage.setItem("token", data.token);
         await AsyncStorage.setItem("userType", userType);
         await AsyncStorage.setItem("aidantData", JSON.stringify(data.user));
-        await AsyncStorage.setItem("aidantId", data.user.id.toString());
+        await AsyncStorage.setItem("userId", data.user.id.toString());
+        console.log("Token SignIn:",data.token);
+        console.log("userType SignIn:", userType);
+        console.log("aidantData SignIn:", JSON.stringify(data.user));
+        console.log("userId SignIn:",data.user.id.toString());
 
         Alert.alert("Connecté avec succès");
 

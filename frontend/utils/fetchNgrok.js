@@ -4,6 +4,7 @@ export const BASE_URL = 'http://10.0.2.2:3000'; // Remplace par ton lien ngrok a
 
 export const fetchWithToken = async (endpoint, token, options = {}) => {
   try {
+    console.log(`Request to: ${BASE_URL}${endpoint}`); // Debug
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       ...options,
       method: options.method || 'GET',
@@ -14,12 +15,19 @@ export const fetchWithToken = async (endpoint, token, options = {}) => {
       },
     });
     console.log("response: ",response);
-
+      console.log("Response status:", response.status); // Debug
+        const text = await response.text();
+    console.log("Raw response:", text); // Debug
     if (!response.ok) {
-      throw new Error(`Erreur HTTP ${response.status}`);
+      try {
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.message || `Erreur HTTP ${response.status}`);
+      } catch {
+        throw new Error(text || `Erreur HTTP ${response.status}`);
+      }
     }
 
-    return await response.json();
+     return text ? JSON.parse(text) : {};
   } catch (error) {
     console.error('Erreur fetch :', error);
     throw error;

@@ -18,6 +18,29 @@ class Rappel {
     );
     return result.rows[0].ispinned; // Attention à la casse
   }
+  // Récupère tous les rappels des patients associés à un aidant
+static async findByAidant(id_aidant) {
+  try {
+    console.log("Appel de findByAidant avec id_aidant:", id_aidant);
+
+    const query = `
+      SELECT r.*
+      FROM rappels r
+      JOIN accompagnements a ON r.id_patient = a.id_patient
+      WHERE a.id_aidant = $1
+      ORDER BY r.date_rappel, r.heure_rappel
+    `;
+
+    const { rows } = await pool.query(query, [id_aidant]);
+    console.log("Rappels trouvés:", rows);
+
+    return rows;
+  } catch (err) {
+    console.error("Erreur dans findByAidant:", err);
+    throw err;
+  }
+}
+
 
 
   static async toggleConfirm(id_rappel) {

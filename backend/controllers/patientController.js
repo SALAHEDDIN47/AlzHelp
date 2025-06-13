@@ -69,8 +69,10 @@ exports.updatePatient = async (req, res) => {
 };
 
 // Récupérer les informations du patient actuel
+//api/patients/thispatient:
 exports.getCurrentPatient = async (req, res) => {
   try {
+     console.log("userId reçu depuis le token :", req.userId);
     const query = `
       SELECT 
         id_patient as id,
@@ -78,10 +80,12 @@ exports.getCurrentPatient = async (req, res) => {
         prenompatient as prenom,
         emailpatient as email,
         telephpatient as telephone,
-        datenaissance
+        adresspat as adresse,
+        datenaissance as datenaissance
       FROM patients 
-      WHERE id_patient = $1`;
+      WHERE id_patient = CAST($1 AS INTEGER)`;
     const { rows } = await pool.query(query, [req.userId]);
+    console.log("userId reçu depuis le token :", req.userId);
     
     if (!rows[0]) {
       return res.status(404).json({ error: 'Patient non trouvé' });

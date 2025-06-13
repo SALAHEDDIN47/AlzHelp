@@ -17,8 +17,10 @@ const verifyToken = async (req, res, next) => {
     
     next();
   } catch (error) {
+    console.error("Erreur JWT:", error.message);
     res.status(401).json({ error: 'Authentification invalide' });
   }
 };
 
 module.exports = { verifyToken };
+
