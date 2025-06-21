@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { View, Text, TextInput, Alert, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
+import { useState, useEffect } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
@@ -15,10 +15,9 @@ export default function SignUp() {
     confirmPassword: "",
     telephone: "",
     dateNaissance: "",
-    lienFamilial: "",
     adresse: "",
   });
-  
+
   const [errors, setErrors] = useState({
     nom: "",
     prenom: "",
@@ -27,7 +26,6 @@ export default function SignUp() {
     confirmPassword: "",
     telephone: "",
     dateNaissance: "",
-    lienFamilial: "",
     adresse: "",
   });
 
@@ -35,33 +33,22 @@ export default function SignUp() {
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
+   const [showPasswordCriteria, setShowPasswordCriteria] = useState(false);  // Nouveau state pour afficher les critères
   const showDatePicker = () => setDatePickerVisibility(true);
   const hideDatePicker = () => setDatePickerVisibility(false);
 
   const handleConfirm = (date) => {
     const formattedDate = date.toLocaleDateString("fr-FR");
     setForm({ ...form, dateNaissance: formattedDate });
-    setErrors({...errors, dateNaissance: ""});
+    setErrors({ ...errors, dateNaissance: "" });
     hideDatePicker();
   };
 
   const validateForm = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^(?:\+212|0)([5-7]\d{8})$/;
-    const passwordRegex = /^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[\W_]).{8,}$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
     const nameRegex = /^[A-Za-z]+$/;
-    const dateRegex = /^(0[1-9]|[12][0-9]|3[01])[\/\-](0[1-9]|1[0-2])[\/\-](19|20)\d{2}$/;
-
-    function isValidDate(dateStr) {
-      const [day, month, year] = dateStr.split(/[\/\-]/).map(Number);
-      const date = new Date(year, month - 1, day);
-      return (
-        date.getFullYear() === year &&
-        date.getMonth() === month - 1 &&
-        date.getDate() === day
-      );
-    }
 
     const newErrors = {
       nom: "",
@@ -71,7 +58,6 @@ export default function SignUp() {
       confirmPassword: "",
       telephone: "",
       dateNaissance: "",
-      lienFamilial: "",
       adresse: "",
     };
 
@@ -109,13 +95,13 @@ export default function SignUp() {
       newErrors.password = "Le mot de passe est obligatoire";
       isValid = false;
     } else if (!passwordRegex.test(form.password)) {
-      newErrors.password = "8 caractères min, majuscule, minuscule, chiffre, spécial";
+      newErrors.password = "Le mot de passe doit comporter 8 caractères min, une majuscule, une minuscule, un chiffre et un caractère spécial.";
       isValid = false;
     }
 
     // Validation de la confirmation du mot de passe
     if (!form.confirmPassword) {
-      newErrors.confirmPassword = "Confirmez votre mot de passe";
+      newErrors.confirmPassword = "Veuillez confirmer votre mot de passe";
       isValid = false;
     } else if (form.password !== form.confirmPassword) {
       newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
@@ -129,32 +115,31 @@ export default function SignUp() {
     }
 
     // Validation de la date de naissance
-    if (form.dateNaissance) {
-      if (!dateRegex.test(form.dateNaissance)) {
-        newErrors.dateNaissance = "Format invalide (JJ/MM/AAAA)";
-        isValid = false;
-      } else if (!isValidDate(form.dateNaissance)) {
-        newErrors.dateNaissance = "Date invalide";
-        isValid = false;
-      }
-    }
-
-    // Validation spécifique aux aidants
-    if (userType === 'aidant' && !form.lienFamilial.trim()) {
-      newErrors.lienFamilial = "Le lien familial est obligatoire";
+    if (form.dateNaissance && !isValidDate(form.dateNaissance)) {
+      newErrors.dateNaissance = "Date de naissance invalide";
       isValid = false;
     }
 
+    
+
     // Validation spécifique aux patients
-    if (userType === 'patient') {
-      if (!form.adresse.trim()) {
-        newErrors.adresse = "L'adresse est obligatoire";
-        isValid = false;
-      }
+    if (userType === 'patient' && !form.adresse.trim()) {
+      newErrors.adresse = "L'adresse est obligatoire";
+      isValid = false;
     }
 
     setErrors(newErrors);
     return isValid;
+  };
+
+  const isValidDate = (dateStr) => {
+    const [day, month, year] = dateStr.split("/").map(Number);
+    const date = new Date(year, month - 1, day);
+    return (
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day
+    );
   };
 
   const handleSubmit = async () => {
@@ -172,25 +157,14 @@ export default function SignUp() {
         body: JSON.stringify({ ...form, userType }),
       });
 
-      const contentType = response.headers.get("content-type");
-
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
-        console.error("Réponse non-JSON du serveur :", text);
-        Alert.alert("Erreur", "Le serveur a renvoyé une réponse inattendue.");
-        return;
-      }
-
       const data = await response.json();
 
       if (response.ok) {
         await AsyncStorage.setItem('token', data.token);
         await AsyncStorage.setItem('userType', userType);
-        Alert.alert(
-          "Succès",
-          "Inscription réussie !",
-          [{ text: "OK", onPress: () => router.replace("/SignIn") }]
-        );
+        Alert.alert("Succès", "Inscription réussie !", [
+          { text: "OK", onPress: () => router.replace("/SignIn") }
+        ]);
       } else {
         Alert.alert("Erreur", data.error || "Échec de l'inscription");
       }
@@ -202,16 +176,12 @@ export default function SignUp() {
     }
   };
 
-  const ErrorText = ({ error }) => (
-    error ? <Text style={styles.errorText}>{error}</Text> : null
-  );
+  const ErrorText = ({ error }) => (error ? <Text style={styles.errorText}>{error}</Text> : null);
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.container}>
-        <Text style={styles.title}>
-          Inscription {userType === 'patient' ? 'Patient' : 'Aidant'}
-        </Text>
+        <Text style={styles.title}>Inscription {userType === 'patient' ? 'Patient' : 'Aidant'}</Text>
 
         <Text style={styles.requiredLabel}>* Champs obligatoires</Text>
 
@@ -221,8 +191,8 @@ export default function SignUp() {
             placeholder="Nom *"
             value={form.nom}
             onChangeText={(text) => {
-              setForm({...form, nom: text});
-              if (errors.nom) setErrors({...errors, nom: ""});
+              setForm({ ...form, nom: text });
+              if (errors.nom) setErrors({ ...errors, nom: "" });
             }}
           />
           <ErrorText error={errors.nom} />
@@ -234,8 +204,8 @@ export default function SignUp() {
             placeholder="Prénom *"
             value={form.prenom}
             onChangeText={(text) => {
-              setForm({...form, prenom: text});
-              if (errors.prenom) setErrors({...errors, prenom: ""});
+              setForm({ ...form, prenom: text });
+              if (errors.prenom) setErrors({ ...errors, prenom: "" });
             }}
           />
           <ErrorText error={errors.prenom} />
@@ -247,8 +217,8 @@ export default function SignUp() {
             placeholder="Email *"
             value={form.email}
             onChangeText={(text) => {
-              setForm({...form, email: text});
-              if (errors.email) setErrors({...errors, email: ""});
+              setForm({ ...form, email: text });
+              if (errors.email) setErrors({ ...errors, email: "" });
             }}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -256,31 +226,43 @@ export default function SignUp() {
           <ErrorText error={errors.email} />
         </View>
 
-        <View>
-          <View style={[styles.passwordContainer, errors.password && styles.inputError]}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Mot de passe *"
-              value={form.password}
-              onChangeText={(text) => {
-                setForm({...form, password: text});
-                if (errors.password) setErrors({...errors, password: ""});
-              }}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity 
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeButton}
-            >
-              <Ionicons
-                name={showPassword ? "eye-off" : "eye"}
-                size={24}
-                color="#888"
-              />
-            </TouchableOpacity>
-          </View>
-          <ErrorText error={errors.password} />
-        </View>
+      // Partie de saisie du mot de passe
+// Partie de saisie du mot de passe
+<View>
+  <View style={[styles.passwordContainer, errors.password && styles.inputError]}>
+    <TextInput
+      style={styles.passwordInput}
+      placeholder="Mot de passe *"
+      value={form.password}
+      onChangeText={(text) => {
+        setForm({ ...form, password: text });
+        if (errors.password) setErrors({ ...errors, password: "" });
+        setShowPasswordCriteria(text.length > 0);  // Affiche les critères dès qu'un texte est saisi
+      }}
+      onBlur={() => setShowPasswordCriteria(false)}  // Masque les critères lorsque le champ perd le focus
+      secureTextEntry={!showPassword}
+    />
+    <TouchableOpacity 
+      onPress={() => setShowPassword(!showPassword)}
+      style={styles.eyeButton}
+    >
+      <Ionicons
+        name={showPassword ? "eye-off" : "eye"}
+        size={24}
+        color="#888"
+      />
+    </TouchableOpacity>
+  </View>
+  <ErrorText error={errors.password} />
+
+  {/* Affichage des critères de mot de passe en une seule ligne */}
+  {showPasswordCriteria && (
+    <Text style={styles.passwordCriteria}>
+      Le mot de passe doit comporter au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.
+    </Text>
+  )}
+</View>
+
 
         <View>
           <View style={[styles.passwordContainer, errors.confirmPassword && styles.inputError]}>
@@ -289,8 +271,8 @@ export default function SignUp() {
               placeholder="Confirmer le mot de passe *"
               value={form.confirmPassword}
               onChangeText={(text) => {
-                setForm({...form, confirmPassword: text});
-                if (errors.confirmPassword) setErrors({...errors, confirmPassword: ""});
+                setForm({ ...form, confirmPassword: text });
+                if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: "" });
               }}
               secureTextEntry={!showConfirmPassword}
             />
@@ -314,8 +296,8 @@ export default function SignUp() {
             placeholder="Téléphone"
             value={form.telephone}
             onChangeText={(text) => {
-              setForm({...form, telephone: text});
-              if (errors.telephone) setErrors({...errors, telephone: ""});
+              setForm({ ...form, telephone: text });
+              if (errors.telephone) setErrors({ ...errors, telephone: "" });
             }}
             keyboardType="phone-pad"
           />
@@ -342,20 +324,7 @@ export default function SignUp() {
           maximumDate={new Date()}
         />
 
-        {userType === 'aidant' && (
-          <View>
-            <TextInput
-              style={[styles.input, errors.lienFamilial && styles.inputError]}
-              placeholder="Lien familial avec le patient *"
-              value={form.lienFamilial}
-              onChangeText={(text) => {
-                setForm({...form, lienFamilial: text});
-                if (errors.lienFamilial) setErrors({...errors, lienFamilial: ""});
-              }}
-            />
-            <ErrorText error={errors.lienFamilial} />
-          </View>
-        )}
+        
 
         {userType === 'patient' && (
           <>
@@ -365,8 +334,8 @@ export default function SignUp() {
                 placeholder="Adresse *"
                 value={form.adresse}
                 onChangeText={(text) => {
-                  setForm({...form, adresse: text});
-                  if (errors.adresse) setErrors({...errors, adresse: ""});
+                  setForm({ ...form, adresse: text });
+                  if (errors.adresse) setErrors({ ...errors, adresse: "" });
                 }}
               />
               <ErrorText error={errors.adresse} />
@@ -500,4 +469,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: -5,
   },
-}); 
+ passwordCriteria: {
+  fontSize: 13,
+  color: "#7A85D6",
+  marginTop: 0, // Réduit l'espace entre le champ de mot de passe et les critères
+  marginLeft: 5, // Aligne le texte à gauche, au niveau du champ de saisie
+  textAlign: "left", // Assure que le texte commence à gauche
+},
+
+});

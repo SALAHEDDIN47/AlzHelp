@@ -5,47 +5,47 @@ import { router } from "expo-router";
 
 export default function AddPatient() {
   const [patientId, setPatientId] = useState("");
-  const [aidantId, setAidantId] = useState("");
+  const [id_aidant, setAidantId] = useState("");
+  const [lienFamilial, setLienFamilial] = useState(""); // Nouveau champ pour le lien familial
 
-useEffect(() => {
-  const fetchAidantId = async () => {
-    const id = await AsyncStorage.getItem("aidantId");
-    console.log("ID de l'aidant depuis AsyncStorage:", id); // Vérification du stockage
-    setAidantId(id);
-  };
-  fetchAidantId();
-}, []);
+  useEffect(() => {
+    const fetchAidantId = async () => {
+      const id_aidant = await AsyncStorage.getItem("userId");
+      console.log("ID de l'aidant depuis AsyncStorage addPatient:", id_aidant); // Vérification du stockage
+      setAidantId(id_aidant);
+    };
+    fetchAidantId();
+  }, []);
 
-const handleAddPatient = async () => {
-  if (!patientId) {
-    Alert.alert("Erreur", "Veuillez entrer un ID de patient.");
-    return;
-  }
-
-  console.log("Aidant ID envoyé:", aidantId); // Vérification avant l'envoi de la requête
-
-  try {
-    const response = await fetch("http://10.0.2.2:3000/api/aidants/addPatientForAidant", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ aidantId, patientId }),
-    });
-
-    const data = await response.json();
-    console.log("Réponse du serveur:", data);  // Ajoutez cette ligne pour vérifier la réponse du serveur
-
-    if (response.ok) {
-      Alert.alert("Succès", "Patient ajouté avec succès !");
-      router.replace("/AccueilAidant"); // Redirige vers l'accueil
-    } else {
-      Alert.alert("Erreur", data.error || "Une erreur est survenue.");
+  const handleAddPatient = async () => {
+    if (!patientId || !lienFamilial) {
+      Alert.alert("Erreur", "Veuillez entrer un ID de patient et le lien familial.");
+      return;
     }
-  } catch (error) {
-    console.error("Erreur lors de l'ajout du patient", error);
-    Alert.alert("Erreur", "Impossible d'ajouter le patient");
-  }
-};
 
+    console.log("Aidant ID envoyé:", id_aidant); // Vérification avant l'envoi de la requête
+
+    try {
+      const response = await fetch("http://10.0.2.2:3000/api/aidants/addPatientForAidant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aidantId: id_aidant, patientId, lienFamilial }),
+      });
+
+      const data = await response.json();
+      console.log("Réponse du serveur:", data);  // Ajoutez cette ligne pour vérifier la réponse du serveur
+
+      if (response.ok) {
+        Alert.alert("Succès", "Patient ajouté avec succès !");
+        router.replace("/AccueilAidant"); // Rediriger vers l'accueil
+      } else {
+        Alert.alert("Erreur", data.error || "Une erreur est survenue.");
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'ajout du patient", error);
+      Alert.alert("Erreur", "Impossible d'ajouter le patient");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -55,6 +55,12 @@ const handleAddPatient = async () => {
         placeholder="ID du Patient"
         value={patientId}
         onChangeText={setPatientId}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Lien familial avec le patient"
+        value={lienFamilial}
+        onChangeText={setLienFamilial}  // Lier le texte du champ
       />
       <TouchableOpacity style={styles.button} onPress={handleAddPatient}>
         <Text style={styles.buttonText}>Ajouter</Text>

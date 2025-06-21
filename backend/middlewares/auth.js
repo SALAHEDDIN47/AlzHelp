@@ -32,4 +32,27 @@ console.log("Authorization header reçu :", authHeader);
   }
 }
 
+
+// Middleware pour vérifier le token JWT
+const authMiddleware = (req, res, next) => {
+  const token = req.headers['authorization'];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token manquant' });
+  }
+
+  // Retirer le "Bearer" du token
+  const tokenWithoutBearer = token.split(' ')[1];
+
+  try {
+    // Vérifier et décoder le token
+    const decoded = jwt.verify(tokenWithoutBearer, process.env.JWT_SECRET);
+    req.userId = decoded.id; // Ajouter l'ID de l'utilisateur décodé à la requête
+    next(); // Passer au prochain middleware
+  } catch (error) {
+    return res.status(401).json({ error: 'Token invalide' });
+  }
+};
+
+module.exports = authMiddleware;
 module.exports = authenticate;

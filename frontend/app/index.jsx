@@ -64,7 +64,7 @@ export default function Index() {
         source={require("../assets/images/logo.jpg")} // Chemin vers le logo
         style={styles.logo}
       />
-      <Text style={styles.title}>Bienvenue sur AlzHelp</Text>
+      <Text style={styles.title}>Bienvenue !</Text>
       {token && <Text style={styles.tokenText}>Token de notification: {token}</Text>}  {/* Affichage du token si disponible */}
     </Animated.View>
   );

@@ -1,8 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const { saveTokenToDatabase } = require('../controllers/notificationController');
+const notificationController = require('../controllers/notificationController');
+const { verifyToken } = require('../middlewares/authJWT');
 
-// Route pour sauvegarder le token dans la base de données
-router.post('/saveToken', saveTokenToDatabase);
+// Récupérer toutes les notifications pour l'aidant connecté
+router.get('/', verifyToken, notificationController.getNotificationsForAidant);
+
+// Récupérer le nombre de notifications non lues
+router.get('/unread-count', verifyToken, notificationController.getUnreadCount);
+
+// Marquer toutes les notifications comme lues
+router.put('/mark-all-read', verifyToken, notificationController.markAllAsRead);
+
+// Masquer (supprimer logiquement) une notification
+router.put('/:id/dismiss', verifyToken, notificationController.dismissNotification);
 
 module.exports = router;

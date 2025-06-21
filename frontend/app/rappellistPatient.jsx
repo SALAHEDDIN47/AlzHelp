@@ -40,8 +40,8 @@ export default function Index() {
         const data = await fetchWithToken('/api/rappels/thisrappels', token);
         setRappels(data);
         console.log("Rappels recupérés:", data);
-        // 💡 C’est ici qu’on initialise les rappels épinglés :
-      setPinnedRappels(data.filter(r => r.ispinned).map(r => r.id_rappel));
+        // 💡 C'est ici qu'on initialise les rappels épinglés :
+      setPinnedRappels(data.filter(r => r.favori).map(r => r.id_rappel));
       setConfirmedRappels(data.filter(r => !(r.confirmer_rappel)).map(r => r.id_rappel));
       console.log(" pinned Rappels recupérés:", pinnedRappels);
       console.log("confirmed Rappels recupérés:", confirmedRappels);
@@ -76,9 +76,9 @@ const togglePin = async (id_rappel) => {
 
     
 
-    if (response && typeof response.ispinned === 'boolean') {
+    if (response && typeof response.favori === 'boolean') {
       setPinnedRappels((prev) =>
-        response.ispinned 
+        response.favori 
       ? [...prev, id_rappel] 
       : prev.filter((rId) => rId !== id_rappel)
       );
@@ -87,7 +87,7 @@ const togglePin = async (id_rappel) => {
       setRappels((prevRappels) =>
         prevRappels.map((rappel) =>
           rappel.id_rappel === id_rappel
-            ? { ...rappel, ispinned: response.ispinned }
+            ? { ...rappel, favori: response.favori }
             : rappel
         )
       );
@@ -176,12 +176,11 @@ const toggleConfirm = async (id_rappel) => {
         <TouchableOpacity onPress={() => router.push('./Home/patient/tabs/confirmed')}>
           <FontAwesome name="check-circle" size={25} color="#007bff" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('./Home/patient/tabs/pinned')}>
-          <FontAwesome name="thumb-tack" size={25} color="#007bff" />
-        </TouchableOpacity>
-        <Ionicons  name="clipboard-outline" size={30} />
         <TouchableOpacity onPress={() => router.push('./Home/patient/tabs/history')}>
           <FontAwesome name="history" size={25} color="#007bff" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('./Home/patient/tabs/pinned')}>
+          <FontAwesome name="star" size={25} color="#007bff" />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => router.push('./Home/patient/tabs/filters')}>
           <FontAwesome name="filter" size={25} color="#007bff" />
@@ -193,11 +192,30 @@ const toggleConfirm = async (id_rappel) => {
 
       <FlatList
         style={styles.listrappels}
-        data={rappels}
+        data={(() => {
+          const pad = (n) => n.toString().padStart(2, '0');
+          const parseDateTime = (dateStr, timeStr) => {
+            let date = dateStr;
+            let heure = timeStr && /^\d{2}:\d{2}(:\d{2})?$/.test(timeStr) ? timeStr : '00:00:00';
+            if (/^\d{2}:\d{2}$/.test(heure)) heure += ':00';
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
+              const [d, m, y] = date.split('/');
+              date = `${y}-${pad(m)}-${pad(d)}`;
+            }
+            return new Date(`${date}T${heure}`);
+          };
+          const sorted = [...rappels].sort((a, b) => {
+            const dateA = parseDateTime(a.date_rappel, a.heure_rappel);
+            const dateB = parseDateTime(b.date_rappel, b.heure_rappel);
+            return dateA - dateB;
+          }).reverse();
+          console.log('Ordre des rappels triés (plus récent en haut):', sorted.map(r => `${r.date_rappel} ${r.heure_rappel}`));
+          return sorted;
+        })()}
         keyExtractor={(item) => item.id_rappel.toString()}
         renderItem={({ item }) => {
 
-          const ispinned = pinnedRappels.includes(item.id_rappel);
+          const favori = pinnedRappels.includes(item.id_rappel);
           const est_confirmer = item.est_confirmer;
          
          return( 
@@ -205,15 +223,15 @@ const toggleConfirm = async (id_rappel) => {
           <TouchableOpacity onPress={() => speakRappel(item)}>
             <View style={styles.rappel}>
 
-              {/* 📌 Bouton épingle */}
+              {/* ⭐ Bouton favoris (étoile) */}
           <TouchableOpacity
             style={styles.pinButton}
             onPress={() => togglePin(item.id_rappel)}
           >
-            <Ionicons
-              name={ispinned ? "pin" : "pin-outline"}
-              size={ispinned ? 40 : 30}
-              color={ispinned ? "#007AFF" : "#888"}
+            <FontAwesome
+              name={favori ? "star" : "star-o"}
+              size={favori ? 40 : 30}
+              color={favori ? "#FFD700" : "#888"}
             />
           </TouchableOpacity>
 

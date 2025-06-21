@@ -11,7 +11,10 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Ionicons } from "@expo/vector-icons"; // 👈 Import de l'icône
+import { Ionicons } from "@expo/vector-icons"; // �� Import de l'icône
+import NotificationService from '../utils/notificationService';
+
+
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -19,54 +22,77 @@ export default function SignIn() {
   const [userType, setUserType] = useState("patient");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false); // 👈 Etat pour afficher/masquer le mot de passe
+  const [successMessage, setSuccessMessage] = useState(null);
 
-  const handleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("http://10.0.2.2:3000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, userType }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        await AsyncStorage.setItem("token", data.token);
-        await AsyncStorage.setItem("userType", userType);
-        await AsyncStorage.setItem("aidantData", JSON.stringify(data.user));
-        await AsyncStorage.setItem("userId", data.user.id.toString());
-        console.log("Token SignIn:",data.token);
-        console.log("userType SignIn:", userType);
-        console.log("aidantData SignIn:", JSON.stringify(data.user));
-        console.log("userId SignIn:",data.user.id.toString());
-
-        Alert.alert("Connecté avec succès");
-
-        if (userType === "patient") {
-          router.replace("/indexPatient");
-        } else if (userType === "aidant") {
-          if (data.isFirstLogin) {
-            router.replace("/addPatient");
-          } else {
-            router.replace("/AccueilAidant");
-          }
-        }
-      } else {
-        Alert.alert("Erreur", data.message || "Identifiants incorrects");
-      }
-    } catch (error) {
-      Alert.alert("Erreur", "Connexion au serveur impossible");
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
+    const showSuccessMessage = (message) => {
+    setSuccessMessage(message);
+    setTimeout(() => {
+      setSuccessMessage(null); // Le message disparaît après 3 secondes
+    }, 3000);
   };
+
+ const handleSignIn = async () => {
+  setIsLoading(true);
+  try {
+    const response = await fetch("http://10.0.2.2:3000/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, userType }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      await AsyncStorage.setItem("token", data.token);
+      await AsyncStorage.setItem("userType", userType);
+      await AsyncStorage.setItem("aidantName", data.user.nom + " " + data.user.prenom); // Stocker le nom et prénom de l'aidant
+      await AsyncStorage.setItem("userId", data.user.id.toString());
+      console.log("userId init:", data.user.id);
+
+      // Envoi du token push au backend
+      try {
+        const pushToken = await NotificationService.registerForPushNotificationsAsync();
+        if (pushToken) {
+          await NotificationService.saveTokenToBackend(pushToken, data.user.id, userType);
+        }
+      } catch (e) {
+        console.warn('Impossible d\'enregistrer le token push:', e);
+      }
+
+      // Afficher un message de succès
+      showSuccessMessage("Connecté avec succès"); // Affichage du message de succès
+
+      if (userType === "patient") {
+        router.replace("/indexPatient");
+      } else if (userType === "aidant") {
+        if (data.isFirstLogin) {
+          router.replace("/addPatient");
+        } else {
+          router.replace("/AccueilAidant");
+        }
+      }
+    } else {
+      Alert.alert("Erreur", data.message || "Identifiants incorrects");
+    }
+  } catch (error) {
+    Alert.alert("Erreur", "Connexion au serveur impossible");
+    console.error(error);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <View style={styles.container}>
       <Image source={require("../assets/images/logo.jpg")} style={styles.logo} />
       <Text style={styles.title}>Connexion</Text>
+
+  {successMessage && (
+        <View style={styles.successMessage}>
+          <Text style={styles.successText}>{successMessage}</Text>
+        </View>
+      )}
 
       <View style={styles.radioContainer}>
         <TouchableOpacity
@@ -217,5 +243,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     textDecorationLine: "underline",
+  },
+    successMessage: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    marginBottom: 20,
+    width: '80%',
+    alignItems: 'center',
+    alignSelf: 'center',
+  },
+  successText: {
+    color: '#fff',
+    fontSize: 16,
   },
 });

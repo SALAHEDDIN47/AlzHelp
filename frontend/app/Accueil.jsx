@@ -2,17 +2,42 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Alert } from "react-native";
 import { router } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchWithToken, BASE_URL } from '../utils/fetchNgrok';
 
 export default function Accueil() {
   const [rappels, setRappels] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("http://10.0.2.2:3000/api/rappels") // Modifier si nécessaire
-      .then(res => res.json())
-      .then(data => setRappels(data))
-      .catch(err => console.error("Erreur récupération rappels:", err));
+    const fetchRappels = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        if (!token) {
+          router.replace('/login');
+          return;
+        }
 
+        const response = await fetch(`${BASE_URL}/api/rappels`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des rappels');
+        }
+
+        const data = await response.json();
+        setRappels(data);
+      } catch (err) {
+        console.error("Erreur récupération rappels:", err);
+        setError(err.message);
+        Alert.alert("Erreur", "Impossible de charger les rappels");
+      }
+    };
+
+    fetchRappels();
     const interval = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(interval);
   }, []);

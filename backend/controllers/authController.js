@@ -3,6 +3,18 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/db'); // Connexion à la base de données
 require('dotenv').config();
 
+
+// Fonction pour générer un ID alphanumérique unique
+const generateAlphanumericId = () => {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    result += characters[randomIndex];
+  }
+  return result;
+};
+
 // Fonction d'enregistrement
 const register = async (req, res) => {
   try {
@@ -10,18 +22,20 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(userData.password, 10);
 
     let user;
+    const generatedId = generateAlphanumericId(); // Générer un ID alphanumérique unique
+
     if (userType === 'patient') {
       const result = await pool.query(
-        `INSERT INTO patients (nompatient, prenompatient, emailpatient, mdppatient, telephpatient, datenaissance, adresspat)
+        `INSERT INTO patients (id_patient, nompatient, prenompatient, emailpatient, mdppatient, telephpatient, datenaissance, adresspat)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id_patient`,
-        [userData.nom, userData.prenom, userData.email, hashedPassword, userData.telephone, userData.dateNaissance, userData.adresse]
+        [generatedId, userData.nom, userData.prenom, userData.email, hashedPassword, userData.telephone, userData.dateNaissance, userData.adresse]
       );
       user = result.rows[0];
     } else if (userType === 'aidant') {
       const result = await pool.query(
-        `INSERT INTO aidants (nomaidant, prenomaidant, emailaidant, mdpaidant, telephaidant, d_naissanceaidant, lien_familial)
+        `INSERT INTO aidants (id_aidant, nomaidant, prenomaidant, emailaidant, mdpaidant, telephaidant, d_naissanceaidant)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id_aidant`,
-        [userData.nom, userData.prenom, userData.email, hashedPassword, userData.telephone, userData.dateNaissance, userData.lienFamilial]
+        [generatedId, userData.nom, userData.prenom, userData.email, hashedPassword, userData.telephone, userData.dateNaissance]
       );
       user = result.rows[0];
     } else {
@@ -39,6 +53,7 @@ const register = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
 
 // Fonction de connexion
 const login = async (req, res) => {
@@ -89,9 +104,9 @@ const login = async (req, res) => {
       userType,
       user: {
         id: user.id_patient || user.id_aidant,
-        nom: user.nom,
-        prenom: user.prenom,
-        email: user.email
+        nom: userType === 'patient' ? user.nompatient : user.nomaidant,
+        prenom: userType === 'patient' ? user.prenompatient : user.prenomaidant,
+        email: userType === 'patient' ? user.emailpatient : user.emailaidant
       },
       isFirstLogin: false,
     });
@@ -103,10 +118,9 @@ const login = async (req, res) => {
 
 // Fonction pour ajouter un patient à un aidant
 const addPatientForAidant = async (req, res) => {
-  const { aidantId, patientId } = req.body;
+  const { aidantId, patientId, lienFamilial } = req.body;  // Récupérer le lien familial
 
-  console.log("ID de l'aidant reçu dans le backend:", aidantId);
-  console.log("ID du patient reçu:", patientId);
+
 
   try {
     // Vérifier si le patient existe dans la base de données
@@ -126,10 +140,10 @@ const addPatientForAidant = async (req, res) => {
       return res.status(400).json({ error: "Ce patient est déjà associé à cet aidant." });
     }
 
-    // Ajouter la relation aidant-patient dans la table accompagnements
+    // Ajouter la relation aidant-patient dans la table accompagnements avec le lien familial
     await pool.query(
-      "INSERT INTO accompagnements (id_aidant, id_patient) VALUES ($1, $2)",
-      [aidantId, patientId]
+      "INSERT INTO accompagnements (id_aidant, id_patient, lien_familial) VALUES ($1, $2, $3)",
+      [aidantId, patientId, lienFamilial]  // Inclure  familial dans l'insertion
     );
 
     res.status(201).json({ message: "Patient ajouté avec succès à l'aidant." });
@@ -139,14 +153,15 @@ const addPatientForAidant = async (req, res) => {
   }
 };
 
+
 // Vérifier si l'aidant a des patients associés
 const checkPatientForAidant = async (req, res) => {
-  const { aidantId } = req.params;
+  const { id_aidant } = req.params;
 
   try {
     const result = await pool.query(
       "SELECT * FROM accompagnements WHERE id_aidant = $1",
-      [aidantId]
+      [id_aidant]
     );
 
     if (result.rows.length === 0) {
@@ -159,5 +174,35 @@ const checkPatientForAidant = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Fonction pour obtenir tous les patients associés à un aidant
+const getPatients = async (req, res) => {
+  try {
+    const { id_aidant } = req.params;
+    const query = `SELECT p.* FROM patients p JOIN accompagnements a ON p.id_patient = a.id_patient WHERE a.id_aidant = $1`;
+    const { rows } = await pool.query(query, [id_aidant]);
+    res.json(rows);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Fonction pour obtenir les détails d'un aidant
+const getCurrentAidant = async (req, res) => {
+  try {
+    const query = `SELECT * FROM aidants WHERE id_aidant = $1`;
+    const { rows } = await pool.query(query, [req.userId]);
+    
+    if (!rows[0]) {
+      return res.status(404).json({ error: 'Aidant non trouvé' });
+    }
+    
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { addPatientForAidant, getPatients, getCurrentAidant };
 
 module.exports = { register, login, addPatientForAidant, checkPatientForAidant };

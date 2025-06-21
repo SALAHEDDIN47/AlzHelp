@@ -6,14 +6,17 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  Dimensions,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter,useLocalSearchParams } from "expo-router";
-import { BASE_URL } from "../../utils/fetchNgrok"; // ← AJOUT ICI
+import { BASE_URL } from "../../utils/fetchNgrok";
 import * as Speech from 'expo-speech';
+import { MaterialIcons } from '@expo/vector-icons';
 
-
-// ... imports
+const BLUE = "#007AFF";
+const { width } = Dimensions.get('window');
+const AIDANT_CARD_SIZE = 70;
 
 export default function ListeAidantsHorizontale() {
   const [aidants, setAidants] = useState([]);
@@ -22,14 +25,27 @@ export default function ListeAidantsHorizontale() {
   useEffect(() => {
     const fetchAidants = async () => {
       const token = await AsyncStorage.getItem("token");
+      console.log("token:", token);
       const userId = await AsyncStorage.getItem("userId");
+      console.log("userId:", userId);
       try {
-        const res = await fetch(`${BASE_URL}/api/aidants/patients/${userId}`, {
+        const res = await fetch(`${BASE_URL}/api/aidants/AidantsForpatients/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         const data = await res.json();
-        setAidants(data);
+        
+        // Trier les aidants par date d'ajout (le plus récent en premier)
+        const sortedAidants = data.sort((a, b) => {
+          // Utiliser accompagnement_created_at pour trier par date d'ajout de l'accompagnement
+          if (a.accompagnement_created_at && b.accompagnement_created_at) {
+            return new Date(b.accompagnement_created_at) - new Date(a.accompagnement_created_at);
+          }
+          // Par défaut, on garde l'ordre d'arrivée (les plus récents en premier)
+          return 0;
+        });
+        
+        setAidants(sortedAidants);
       } catch (err) {
         console.error("Erreur lors du fetch des aidants:", err);
       }
@@ -46,7 +62,7 @@ export default function ListeAidantsHorizontale() {
 
   const renderItem = ({ item }) => (
     <TouchableOpacity 
-      style={styles.card}
+      style={styles.aidantCard}
       onPress={() => {
         speakInfo(item);
         router.push({
@@ -55,8 +71,20 @@ export default function ListeAidantsHorizontale() {
         });
       }}
     >
-      <Image source={{ uri: item.image_url }} style={styles.image} />
-      <Text style={styles.name}>{item.prenomaidant}</Text>
+      <Image 
+        source={
+          item.image_url 
+            ? { uri: `${BASE_URL}/${item.image_url}` }
+            : require('../../assets/default-avatar.png')
+        } 
+        style={styles.aidantImage} 
+      />
+      <Text style={styles.aidantName} numberOfLines={1}>{item.prenomaidant}</Text>
+      <Text style={styles.aidantName} numberOfLines={1}>{item.nomaidant}</Text>
+      <View style={styles.lienFamilialRow}>
+        <MaterialIcons name="people" size={16} color={BLUE} style={{marginRight: 3}} />
+        <Text style={styles.lienFamilialText} numberOfLines={1}>{item.lien_familial || "-"}</Text>
+      </View>
     </TouchableOpacity>
   );
 
@@ -64,14 +92,15 @@ export default function ListeAidantsHorizontale() {
 
   return (
     <View style={styles.container}>
+      <Text style={styles.sectionTitle}>Mes Aidants</Text>
       <FlatList
-        style={styles.list}
+      
         data={aidants}
         renderItem={renderItem}
         keyExtractor={(item) => item.id_aidant.toString()}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 10 }}
+        contentContainerStyle={{ paddingHorizontal: 15 }}
       />
     </View>
   );
@@ -79,37 +108,50 @@ export default function ListeAidantsHorizontale() {
 
 const styles = StyleSheet.create({
   container: {
-    marginLeft: 10,
-    marginRight: 10,
-    marginBottom: 10,
-    backgroundColor: '#F1F8F8',
-    borderRadius: 40,
-    borderColor: "#007AFF",
-    borderWidth: 1,
-    elevation: 20,
+    marginTop: -6,
   },
-  card: {
-    margin: 7,
-    alignItems: "center",
-    marginLeft: 3,
-    alignSelf: 'center',
-    borderRadius: 40,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 20,
+    marginBottom: 3,
+    color: '#333',
   },
-  image: {
+  aidantCard: {
+    width: AIDANT_CARD_SIZE + 15,
+    alignItems: 'center',
+    marginRight: 15,
+    backgroundColor: '#f7f7f7',
+    borderRadius: 15,
+    padding: 6,
+    elevation: 2,
+  },
+  aidantImage: {
     width: 50,
     height: 50,
-    borderRadius: 40,
-    borderWidth: 2,
-    borderColor: "#007AFF",
-    elevation: 10,
+    borderRadius: 25,
+    marginBottom: 4,
+    backgroundColor: '#e0e0e0',
   },
-  name: {
+  aidantName: {
     fontSize: 13,
-    fontWeight: "500",
-    textAlign: "center",
-    width: 80,
+    color: '#333',
+    fontWeight: '600',
+    textAlign: 'center',
+    maxWidth: 70,
   },
-  list: {
-    backgroundColor: 'transparent',
+  lienFamilialRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 1,
+    maxWidth: 80,
+    alignSelf: 'center',
+  },
+  lienFamilialText: {
+    fontSize: 11,
+    color: BLUE,
+    fontWeight: 'bold',
+    flexShrink: 1,
+    maxWidth: 60,
   },
 });
