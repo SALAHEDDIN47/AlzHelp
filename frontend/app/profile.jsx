@@ -18,6 +18,7 @@ import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-ico
 import * as Speech from 'expo-speech';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as ImagePicker from 'expo-image-picker';
+import { BASE_URL } from '../utils/fetchNgrok';
 
 const ProfilePatient = () => {
   const [patient, setPatient] = useState(null);
@@ -29,6 +30,8 @@ const ProfilePatient = () => {
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [errors, setErrors] = useState({});
   const [profileImage, setProfileImage] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingModifications, setPendingModifications] = useState([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -36,7 +39,7 @@ const ProfilePatient = () => {
       try {
         const token = await AsyncStorage.getItem('token');
         if (!token) throw new Error('Token manquant');
-        const resPatient = await fetch('http://10.0.2.2:3000/api/patients/thispatient', {
+        const resPatient = await fetch(`${BASE_URL}/api/patients/thispatient`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log("resPatient", resPatient);
@@ -45,7 +48,11 @@ const ProfilePatient = () => {
         const patientData = await resPatient.json();
         console.log("patientData", patientData);
         setPatient(patientData);
-        const resRappels = await fetch('http://10.0.2.2:3000/api/rappels/thisrappels', {
+        
+        // Récupérer les modifications en attente pour ce patient
+        fetchPendingModifications(token, patientData.id_patient);
+        
+        const resRappels = await fetch(`${BASE_URL}/api/rappels/thisrappels`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -81,6 +88,22 @@ const ProfilePatient = () => {
 
     fetchData();
   }, []);
+
+  // Fonction pour récupérer les modifications en attente
+  const fetchPendingModifications = async (token, patientId) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/patient-profile-modifications/pending/${patientId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPendingModifications(data.modifications || []);
+      }
+    } catch (error) {
+      console.error('Erreur récupération modifications en attente:', error);
+    }
+  };
 
   useEffect(() => {
     if (editModalVisible) {
@@ -211,64 +234,69 @@ const ProfilePatient = () => {
         return;
       }
 
+      setIsSubmitting(true);
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         Alert.alert('Erreur', 'Session expirée');
         return;
       }
 
-      const formData = new FormData();
-      formData.append('nom', editedPatient.nom);
-      formData.append('prenom', editedPatient.prenom);
-      formData.append('telephone', editedPatient.telephone);
-      formData.append('email', editedPatient.email);
-      formData.append('adresse', editedPatient.adresse);
-      formData.append('datenaissance', editedPatient.datenaissance);
+      // Créer une modification en attente au lieu de mettre à jour directement
+      const modificationData = {
+        patientId: patient.id_patient,
+        oldData: {
+          nom: patient.nom,
+          prenom: patient.prenom,
+          email: patient.email,
+          telephone: patient.telephone,
+          adresse: patient.adresse,
+          datenaissance: patient.datenaissance,
+          profile_image: patient.profile_image
+        },
+        newData: {
+          nom: editedPatient.nom,
+          prenom: editedPatient.prenom,
+          email: editedPatient.email,
+          telephone: editedPatient.telephone,
+          adresse: editedPatient.adresse,
+          datenaissance: editedPatient.datenaissance,
+          profile_image: editedPatient.profileImage || patient.profile_image
+        }
+      };
 
-      if (editedPatient.profileImage) {
-        const imageUri = editedPatient.profileImage;
-        const filename = imageUri.split('/').pop();
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image';
-
-        formData.append('profileImage', {
-          uri: imageUri,
-          name: filename,
-          type
-        });
-      }
-
-      const response = await fetch(`http://10.0.2.2:3000/api/patients/update/${patient.id_patient}`, {
-        method: 'PUT',
+      const response = await fetch(`${BASE_URL}/api/patient-profile-modifications/create`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': 'application/json',
         },
-        body: formData
+        body: JSON.stringify(modificationData)
       });
 
       if (response.ok) {
-        const updatedPatient = await response.json();
-        const updatedPatientData = {
-          ...patient,
-          nom: updatedPatient.nompatient,
-          prenom: updatedPatient.prenompatient,
-          telephone: updatedPatient.telephpatient,
-          email: updatedPatient.emailpatient,
-          adresse: updatedPatient.adresspat,
-          datenaissance: updatedPatient.datenaissance,
-          profile_image: updatedPatient.profile_image
-        };
-        setPatient(updatedPatientData);
+        const result = await response.json();
+        console.log("Réponse du serveur après création modification:", JSON.stringify(result, null, 2));
+        
+        // Fermer le modal et afficher un message de succès
         setEditModalVisible(false);
-        Alert.alert('Succès', 'Profil mis à jour avec succès');
+        Alert.alert(
+          'Modification en attente', 
+          'Votre modification a été envoyée en attente d\'approbation par votre aidant. Vous recevrez une notification une fois approuvée.',
+          [{ text: 'OK' }]
+        );
+        
+        // Rafraîchir les données depuis le serveur
+        fetchPendingModifications(token, patient.id_patient);
       } else {
         const errorData = await response.json();
-        Alert.alert('Erreur', errorData.error || 'Impossible de mettre à jour le profil');
+        console.error("Erreur de création modification:", errorData);
+        Alert.alert('Erreur', errorData.error || 'Impossible de créer la modification');
       }
     } catch (error) {
-      console.error('Erreur mise à jour profil:', error);
-      Alert.alert('Erreur', 'Une erreur est survenue lors de la mise à jour');
+      console.error('Erreur création modification:', error);
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la création de la modification');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -305,56 +333,68 @@ const ProfilePatient = () => {
         </TouchableOpacity>
       </View>
       
-        <View style={styles.profileContainer}>
-          <Image
-            source={patient && patient.profile_image ? 
-              { uri: `http://10.0.2.2:3000/${patient.profile_image}` } : 
-              require('../assets/default-avatar.png')}
-            style={styles.avatar}
-            onError={(e) => {
-              console.error('Erreur de chargement de l\'image:', e.nativeEvent.error);
-              // Fallback vers l'image par défaut en cas d'erreur
-              setPatient(prev => ({
-                ...prev,
-                profile_image: null
-              }));
+      {/* Afficher les modifications en attente */}
+      {pendingModifications.length > 0 && (
+        <View style={styles.pendingContainer}>
+          <View style={styles.pendingHeader}>
+            <Ionicons name="time" size={20} color="#FF9800" />
+            <Text style={styles.pendingTitle}>Modifications en attente</Text>
+          </View>
+          <Text style={styles.pendingText}>
+            Vous avez {pendingModifications.length} modification(s) en attente d'approbation par votre aidant
+          </Text>
+        </View>
+      )}
+      
+      <View style={styles.profileContainer}>
+        <Image
+          source={patient && patient.profile_image ? 
+            { uri: `${BASE_URL}/${patient.profile_image}` } : 
+            require('../assets/default-avatar.png')}
+          style={styles.avatar}
+          onError={(e) => {
+            console.error('Erreur de chargement de l\'image:', e.nativeEvent.error);
+            // Fallback vers l'image par défaut en cas d'erreur
+            setPatient(prev => ({
+              ...prev,
+              profile_image: null
+            }));
+          }}
+        />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={styles.fullname}>{patient.prenom} {patient.nom}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              const age = calculateAge(patient.datenaissance);
+              const message = `Bonjour ${patient.prenom} ${patient.nom}, vous avez ${age} ans, votre ID est ${patient.id_patient}, toutes les autres informations sont au dessous.`;
+              Speech.speak(message, { language: 'fr-FR' });
             }}
-          />
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.fullname}>{patient.prenom} {patient.nom}</Text>
-            <TouchableOpacity
-              onPress={() => {
-                const age = calculateAge(patient.datenaissance);
-                const message = `Bonjour ${patient.prenom} ${patient.nom}, vous avez ${age} ans, votre ID est ${patient.id_patient}, toutes les autres informations sont au dessous.`;
-                Speech.speak(message, { language: 'fr-FR' });
-              }}
-              style={{ marginLeft: 10 }}
-            >
-              <Ionicons name="mic" size={24} color="#007bff" />
-            </TouchableOpacity>
+            style={{ marginLeft: 10 }}
+          >
+            <Ionicons name="mic" size={24} color="#007bff" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.inlineSection}>
+          <View style={styles.infoColumn}>
+            <View style={styles.rowItem}>
+              <FontAwesome5 name="id-card" size={20} color="#007bff" />
+              <Text style={styles.inlineText}>ID: {patient.id_patient}</Text>
+            </View>
           </View>
 
-          <View style={styles.inlineSection}>
-            <View style={styles.infoColumn}>
-              <View style={styles.rowItem}>
-                <FontAwesome5 name="id-card" size={20} color="#007bff" />
-                <Text style={styles.inlineText}>ID: {patient.id_patient}</Text>
-              </View>
-            </View>
+          <View style={styles.verticalDivider} />
 
-            <View style={styles.verticalDivider} />
-
-            <View style={styles.infoColumn}>
-              <View style={styles.rowItem}>
-                <FontAwesome5 name="birthday-cake" size={20} color="#007bff" />
-                <Text style={styles.inlineText}>{calculateAge(patient.datenaissance)} ans</Text>
-              </View>
+          <View style={styles.infoColumn}>
+            <View style={styles.rowItem}>
+              <FontAwesome5 name="birthday-cake" size={20} color="#007bff" />
+              <Text style={styles.inlineText}>{calculateAge(patient.datenaissance)} ans</Text>
             </View>
           </View>
         </View>
+      </View>
 
-<ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <FlatList
           data={personalInfos}
           keyExtractor={(item) => item.key}
@@ -372,11 +412,24 @@ const ProfilePatient = () => {
         />
 
         <TouchableOpacity
-          style={styles.statButton}
+          style={[
+            styles.statButton,
+            isSubmitting && styles.statButtonDisabled
+          ]}
           onPress={handleEdit}
+          disabled={isSubmitting}
         >
-          <Ionicons name="create" size={28} color="white" />
-          <Text style={styles.statText}>Modifier</Text>
+          {isSubmitting ? (
+            <>
+              <Ionicons name="hourglass" size={28} color="white" />
+              <Text style={styles.statText}>En attente...</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="create" size={28} color="white" />
+              <Text style={styles.statText}>Modifier</Text>
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
 
@@ -412,7 +465,7 @@ const ProfilePatient = () => {
                   source={profileImage ? 
                     { uri: profileImage } : 
                     (patient && patient.profile_image ? 
-                      { uri: `http://10.0.2.2:3000/${patient.profile_image}` } : 
+                      { uri: `${BASE_URL}/${patient.profile_image}` } : 
                       require('../assets/default-avatar.png'))}
                   style={styles.profileImage}
                 />
@@ -512,15 +565,24 @@ const ProfilePatient = () => {
               <TouchableOpacity 
                 style={styles.cancelBtn} 
                 onPress={handleCloseModal}
+                disabled={isSubmitting}
               >
                 <Text style={styles.cancelBtnText}>Annuler</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.saveBtn} 
+                style={[
+                  styles.saveBtn,
+                  isSubmitting && styles.saveBtnDisabled
+                ]} 
                 onPress={handleSave}
+                disabled={isSubmitting}
               >
-                <Text style={styles.saveBtnText}>Enregistrer</Text>
+                {isSubmitting ? (
+                  <Text style={styles.saveBtnText}>Envoi...</Text>
+                ) : (
+                  <Text style={styles.saveBtnText}>Enregistrer</Text>
+                )}
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -782,5 +844,34 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     marginTop: 4,
+  },
+  pendingContainer: {
+    backgroundColor: '#FFF3E0',
+    margin: 20,
+    padding: 15,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  pendingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  pendingTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FF9800',
+    marginLeft: 8,
+  },
+  pendingText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  statButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  saveBtnDisabled: {
+    backgroundColor: '#ccc',
   },
 });

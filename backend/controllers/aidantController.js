@@ -141,7 +141,7 @@ exports.getAidantsByPatient = async (req, res) => {
   }
 };
 
-// Mettre à jour un aidant
+// Mettre à jour un aidant (modification directe)
 exports.updateAidant = async (req, res) => {
   try {
     upload(req, res, async function(err) {
@@ -156,6 +156,16 @@ exports.updateAidant = async (req, res) => {
         
         if (!id || !nom || !prenom || !telephone || !email || !dateNaissance) {
           return res.status(400).json({ error: 'Tous les champs sont obligatoires' });
+        }
+        
+        // Vérifier que l'aidant existe
+        const checkAidantQuery = `
+          SELECT id_aidant FROM aidants WHERE id_aidant = $1
+        `;
+        const checkResult = await pool.query(checkAidantQuery, [id]);
+        
+        if (checkResult.rows.length === 0) {
+          return res.status(404).json({ error: 'Aidant non trouvé' });
         }
         
         let imagePath = null;
@@ -174,45 +184,50 @@ exports.updateAidant = async (req, res) => {
           }
         }
         
-        const query = `
-          UPDATE aidants 
-          SET nomaidant = $1, 
-              prenomaidant = $2, 
-              telephaidant = $3,
-              emailaidant = $4,
-              d_naissanceaidant = $5,
-              image_url = COALESCE($6, image_url)
-          WHERE id_aidant = $7
-          RETURNING 
-            id_aidant as id,
-            nomaidant as nom,
-            prenomaidant as prenom,
-            emailaidant as email,
-            telephaidant as telephone,
-            TO_CHAR(d_naissanceaidant, 'YYYY-MM-DD') as dateNaissance,
-            d_naissanceaidant,
-            image_url`;
-        const { rows } = await pool.query(query, [
-          nom, 
-          prenom, 
-          telephone, 
-          email, 
-          dateNaissance, 
-          imagePath,
-          id
-        ]);
+        // Mettre à jour directement le profil de l'aidant
+        let updateQuery, updateParams;
         
-        if (rows.length === 0) {
+        if (imagePath) {
+          // Mise à jour avec nouvelle image
+          updateQuery = `
+            UPDATE aidants 
+            SET nomaidant = $1, prenomaidant = $2, emailaidant = $3, 
+                telephaidant = $4, d_naissanceaidant = $5, image_url = $6
+            WHERE id_aidant = $7
+            RETURNING *
+          `;
+          updateParams = [nom, prenom, email, telephone, dateNaissance, imagePath, id];
+        } else {
+          // Mise à jour sans nouvelle image
+          updateQuery = `
+            UPDATE aidants 
+            SET nomaidant = $1, prenomaidant = $2, emailaidant = $3, 
+                telephaidant = $4, d_naissanceaidant = $5
+            WHERE id_aidant = $6
+            RETURNING *
+          `;
+          updateParams = [nom, prenom, email, telephone, dateNaissance, id];
+        }
+        
+        const updateResult = await pool.query(updateQuery, updateParams);
+        
+        if (updateResult.rows.length === 0) {
           return res.status(404).json({ error: 'Aidant non trouvé' });
         }
         
-        // Ajouter l'URL complète de l'image
-        const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-        if (rows[0].image_url) {
-          rows[0].full_image_url = `${baseUrl}/${rows[0].image_url}`;
-        }
+        const updatedAidant = updateResult.rows[0];
         
-        res.json(rows[0]);
+        res.json({
+          success: true,
+          message: 'Profil mis à jour avec succès',
+          nomaidant: updatedAidant.nomaidant,
+          prenomaidant: updatedAidant.prenomaidant,
+          emailaidant: updatedAidant.emailaidant,
+          telephaidant: updatedAidant.telephaidant,
+          d_naissanceaidant: updatedAidant.d_naissanceaidant,
+          image_url: updatedAidant.image_url
+        });
+        
       } catch (error) {
         console.error('Erreur mise à jour aidant:', error);
         res.status(400).json({ error: error.message });
@@ -345,6 +360,211 @@ exports.addPatientForAidant = async (req, res) => {
     res.status(201).json({ message: "Patient ajouté avec succès", data: result.rows[0] });
   } catch (error) {
     console.error("Erreur lors de l'ajout du patient:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+};
+
+// Fonction pour obtenir les logs des aidants qui ont le même patient
+exports.getAidantLogs = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const aidantId = req.userId; // ID de l'aidant connecté
+
+    if (!patientId) {
+      return res.status(400).json({ error: "ID du patient manquant" });
+    }
+
+    // Vérifier que l'aidant connecté a bien ce patient
+    const checkAccompagnement = await pool.query(
+      'SELECT * FROM accompagnements WHERE id_aidant = $1 AND id_patient = $2',
+      [aidantId, patientId]
+    );
+
+    if (checkAccompagnement.rows.length === 0) {
+      return res.status(403).json({ error: "Vous n'avez pas accès à ce patient" });
+    }
+
+    // Récupérer tous les aidants qui ont ce patient
+    const aidantsQuery = `
+      SELECT DISTINCT a.id_aidant, a.nomaidant, a.prenomaidant, a.image_url, ac.lien_familial
+      FROM aidants a
+      JOIN accompagnements ac ON a.id_aidant = ac.id_aidant
+      WHERE ac.id_patient = $1 AND a.id_aidant != $2
+      ORDER BY a.nomaidant, a.prenomaidant
+    `;
+
+    const { rows: aidants } = await pool.query(aidantsQuery, [patientId, aidantId]);
+
+    // Pour chaque aidant, récupérer ses logs
+    const logsWithAidants = await Promise.all(
+      aidants.map(async (aidant) => {
+        // Récupérer les modifications de rappels
+        const rappelsQuery = `
+          SELECT 
+            'rappel_modification' as type,
+            r.id_rappel,
+            r.description,
+            r.type_rappel,
+            r.created_at,
+            r.updated_at,
+            'Rappel modifié' as action_description
+          FROM rappels r
+          WHERE r.id_patient = $1 AND r.id_aidant = $2
+          AND r.updated_at > r.created_at
+          ORDER BY r.updated_at DESC
+          LIMIT 10
+        `;
+
+        // Récupérer les nouveaux rappels ajoutés
+        const newRappelsQuery = `
+          SELECT 
+            'rappel_ajout' as type,
+            r.id_rappel,
+            r.description,
+            r.type_rappel,
+            r.created_at,
+            r.updated_at,
+            'Nouveau rappel ajouté' as action_description
+          FROM rappels r
+          WHERE r.id_patient = $1 AND r.id_aidant = $2
+          AND r.created_at >= NOW() - INTERVAL '7 days'
+          ORDER BY r.created_at DESC
+          LIMIT 10
+        `;
+
+        // Récupérer les rappels supprimés (si on a une table d'audit)
+        const deletedRappelsQuery = `
+          SELECT 
+            'rappel_suppression' as type,
+            NULL as id_rappel,
+            'Rappel supprimé' as description,
+            'Autre' as type_rappel,
+            NOW() as created_at,
+            NOW() as updated_at,
+            'Rappel supprimé' as action_description
+          WHERE EXISTS (
+            SELECT 1 FROM rappels r 
+            WHERE r.id_patient = $1 AND r.id_aidant = $2
+          )
+          LIMIT 5
+        `;
+
+        // Récupérer les confirmations de modifications de profil patient
+        const confirmationsQuery = `
+          SELECT 
+            'confirmation_modification' as type,
+            ppm.id,
+            ppm.description,
+            'Profil Patient' as type_rappel,
+            ppm.updated_at as created_at,
+            ppm.updated_at,
+            CASE 
+              WHEN ppm.status = 'approved' THEN 'Modification de profil patient approuvée'
+              WHEN ppm.status = 'rejected' THEN 'Modification de profil patient rejetée'
+              ELSE 'Modification de profil patient traitée'
+            END as action_description
+          FROM patient_profile_modifications ppm
+          WHERE ppm.id_patient = $1 AND ppm.id_aidant = $2
+          AND ppm.status IN ('approved', 'rejected')
+          AND ppm.updated_at >= NOW() - INTERVAL '7 days'
+          ORDER BY ppm.updated_at DESC
+          LIMIT 10
+        `;
+
+        const [rappelsModifies, nouveauxRappels, confirmations] = await Promise.all([
+          pool.query(rappelsQuery, [patientId, aidant.id_aidant]),
+          pool.query(newRappelsQuery, [patientId, aidant.id_aidant]),
+          pool.query(confirmationsQuery, [patientId, aidant.id_aidant])
+        ]);
+
+        // Combiner tous les logs
+        const allLogs = [
+          ...rappelsModifies.rows,
+          ...nouveauxRappels.rows,
+          ...confirmations.rows
+        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        return {
+          aidant: {
+            id: aidant.id_aidant,
+            nom: aidant.nomaidant,
+            prenom: aidant.prenomaidant,
+            image_url: aidant.image_url,
+            lien_familial: aidant.lien_familial
+          },
+          logs: allLogs.slice(0, 15) // Limiter à 15 logs les plus récents
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: logsWithAidants.filter(item => item.logs.length > 0) // Ne retourner que les aidants avec des logs
+    });
+
+  } catch (error) {
+    console.error("Erreur getAidantLogs:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+};
+
+// Fonction pour envoyer un message aux aidants d'un patient
+exports.sendMessageToAidants = async (req, res) => {
+  try {
+    const { patientId, message } = req.body;
+    const aidantId = req.userId; // ID de l'aidant qui envoie le message
+
+    if (!patientId || !message) {
+      return res.status(400).json({ error: "ID du patient et message sont obligatoires" });
+    }
+
+    // Vérifier que l'aidant connecté a bien ce patient
+    const checkAccompagnement = await pool.query(
+      'SELECT * FROM accompagnements WHERE id_aidant = $1 AND id_patient = $2',
+      [aidantId, patientId]
+    );
+
+    if (checkAccompagnement.rows.length === 0) {
+      return res.status(403).json({ error: "Vous n'avez pas accès à ce patient" });
+    }
+
+    // Récupérer tous les aidants qui ont ce patient (sauf l'expéditeur)
+    const aidantsQuery = `
+      SELECT DISTINCT a.id_aidant, a.nomaidant, a.prenomaidant, a.emailaidant
+      FROM aidants a
+      JOIN accompagnements ac ON a.id_aidant = ac.id_aidant
+      WHERE ac.id_patient = $1 AND a.id_aidant != $2
+    `;
+
+    const { rows: aidants } = await pool.query(aidantsQuery, [patientId, aidantId]);
+
+    if (aidants.length === 0) {
+      return res.status(404).json({ error: "Aucun autre aidant trouvé pour ce patient" });
+    }
+
+    // Ici vous pourriez implémenter l'envoi de notifications push ou emails
+    // Pour l'instant, on retourne juste un succès
+    const messageData = {
+      from_aidant_id: aidantId,
+      patient_id: patientId,
+      message: message,
+      sent_at: new Date(),
+      recipients: aidants.map(a => ({
+        id: a.id_aidant,
+        nom: a.nomaidant,
+        prenom: a.prenomaidant,
+        email: a.emailaidant
+      }))
+    };
+
+    res.json({
+      success: true,
+      message: `Message envoyé à ${aidants.length} aidant(s)`,
+      data: messageData
+    });
+
+  } catch (error) {
+    console.error("Erreur sendMessageToAidants:", error);
     res.status(500).json({ error: "Erreur serveur" });
   }
 };

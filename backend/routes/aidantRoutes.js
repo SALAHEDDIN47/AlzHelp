@@ -21,5 +21,10 @@ router.get('/:id/getPatients', verifyToken, aidantController.getPatients);
 router.get('/AidantsForpatients/:id', verifyToken,aidantController.getAidantsByPatient);
 router.put('/:id', verifyToken, aidantController.updateAidant);
 router.post('/addPatientForAidant', addPatientForAidant);  // Route pour ajouter le patient à l'aidant
-router.delete('/removePatient', authMiddleware, aidantController.removePatient)
+router.delete('/removePatient', authMiddleware, aidantController.removePatient);
+
+// Nouvelles routes pour les logs des aidants
+router.get('/logs/:patientId', verifyToken, aidantController.getAidantLogs);
+router.post('/send-message', verifyToken, aidantController.sendMessageToAidants);
+
 module.exports = router;

@@ -29,6 +29,7 @@ const ProfileAidant = () => {
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [errors, setErrors] = useState({});
   const [profileImage, setProfileImage] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
   // Fonction pour récupérer les données de l'aidant
@@ -238,6 +239,7 @@ const ProfileAidant = () => {
         return;
       }
 
+      setIsSubmitting(true);
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         Alert.alert('Erreur', 'Session expirée');
@@ -274,7 +276,7 @@ const ProfileAidant = () => {
       }
 
       try {
-        const response = await fetch(`${BASE_URL}/api/aidants/${aidant.id}`, {
+        const response = await fetch(`${BASE_URL}/api/aidants/${aidant.id_aidant}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -284,20 +286,29 @@ const ProfileAidant = () => {
         });
 
         if (response.ok) {
-          const updatedAidant = await response.json();
-          console.log("Réponse du serveur après mise à jour:", JSON.stringify(updatedAidant, null, 2));
+          const result = await response.json();
+          console.log("Réponse du serveur après mise à jour:", JSON.stringify(result, null, 2));
           
-          // S'assurer que dateNaissance est défini
-          if (!updatedAidant.dateNaissance && updatedAidant.d_naissanceaidant) {
-            updatedAidant.dateNaissance = updatedAidant.d_naissanceaidant;
-          }
+          // Mettre à jour les données locales avec les nouvelles valeurs
+          const updatedAidant = {
+            ...aidant,
+            nom: result.nomaidant || editedAidant.nom,
+            prenom: result.prenomaidant || editedAidant.prenom,
+            telephone: result.telephaidant || editedAidant.telephone,
+            email: result.emailaidant || editedAidant.email,
+            dateNaissance: result.d_naissanceaidant || editedAidant.dateNaissance,
+            image_url: result.image_url || aidant.image_url
+          };
           
-          // Mettre à jour l'état avec les nouvelles données
           setAidant(updatedAidant);
           
           // Fermer le modal et afficher un message de succès
           setEditModalVisible(false);
-          Alert.alert('Succès', 'Profil mis à jour avec succès');
+          Alert.alert(
+            'Succès', 
+            'Votre profil a été mis à jour avec succès.',
+            [{ text: 'OK' }]
+          );
           
           // Rafraîchir les données depuis le serveur
           fetchAidantData(token);
@@ -313,6 +324,8 @@ const ProfileAidant = () => {
     } catch (error) {
       console.error('Erreur générale:', error);
       Alert.alert('Erreur', 'Une erreur inattendue est survenue');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -433,11 +446,24 @@ const ProfileAidant = () => {
         />
 
         <TouchableOpacity
-          style={styles.statButton}
+          style={[
+            styles.statButton,
+            isSubmitting && styles.statButtonDisabled
+          ]}
           onPress={handleEdit}
+          disabled={isSubmitting}
         >
-          <Ionicons name="create" size={28} color="white" />
-          <Text style={styles.statText}>Modifier</Text>
+          {isSubmitting ? (
+            <>
+              <Ionicons name="hourglass" size={28} color="white" />
+              <Text style={styles.statText}>Envoi...</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="create" size={28} color="white" />
+              <Text style={styles.statText}>Modifier</Text>
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
 
@@ -570,15 +596,24 @@ const ProfileAidant = () => {
               <TouchableOpacity 
                 style={styles.cancelBtn} 
                 onPress={handleCloseModal}
+                disabled={isSubmitting}
               >
                 <Text style={styles.cancelBtnText}>Annuler</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.saveBtn} 
+                style={[
+                  styles.saveBtn,
+                  isSubmitting && styles.saveBtnDisabled
+                ]} 
                 onPress={handleSave}
+                disabled={isSubmitting}
               >
-                <Text style={styles.saveBtnText}>Enregistrer</Text>
+                {isSubmitting ? (
+                  <Text style={styles.saveBtnText}>Envoi...</Text>
+                ) : (
+                  <Text style={styles.saveBtnText}>Enregistrer</Text>
+                )}
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -840,5 +875,34 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     marginTop: 4,
+  },
+  pendingContainer: {
+    backgroundColor: '#FFF3E0',
+    margin: 20,
+    padding: 15,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  pendingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  pendingTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FF9800',
+    marginLeft: 8,
+  },
+  pendingText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  statButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  saveBtnDisabled: {
+    backgroundColor: '#ccc',
   },
 }); 

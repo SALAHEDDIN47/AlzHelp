@@ -38,5 +38,45 @@ const checkAccompagnementsCreatedAt = async () => {
   }
 };
 
+// Vérifier et ajouter les colonnes de date et heure de création à la table rappels
+const checkRappelsCreationColumns = async () => {
+  try {
+    // Vérifier la colonne date_creation_rappel
+    const checkDateQuery = `
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'rappels' AND column_name = 'date_creation_rappel'
+    `;
+    const dateResult = await pool.query(checkDateQuery);
+    
+    if (dateResult.rows.length === 0) {
+      console.log('Ajout de la colonne date_creation_rappel à la table rappels...');
+      await pool.query('ALTER TABLE rappels ADD COLUMN date_creation_rappel DATE DEFAULT CURRENT_DATE');
+      console.log('Colonne date_creation_rappel ajoutée avec succès à la table rappels');
+    } else {
+      console.log('Colonne date_creation_rappel existe déjà dans la table rappels');
+    }
+
+    // Vérifier la colonne heure_creation_rappel
+    const checkHeureQuery = `
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'rappels' AND column_name = 'heure_creation_rappel'
+    `;
+    const heureResult = await pool.query(checkHeureQuery);
+    
+    if (heureResult.rows.length === 0) {
+      console.log('Ajout de la colonne heure_creation_rappel à la table rappels...');
+      await pool.query('ALTER TABLE rappels ADD COLUMN heure_creation_rappel TIME DEFAULT CURRENT_TIME');
+      console.log('Colonne heure_creation_rappel ajoutée avec succès à la table rappels');
+    } else {
+      console.log('Colonne heure_creation_rappel existe déjà dans la table rappels');
+    }
+  } catch (error) {
+    console.error('Erreur lors de la vérification/ajout des colonnes de création des rappels:', error);
+  }
+};
+
 // Appeler toutes les fonctions de vérification
 checkAccompagnementsCreatedAt();
+checkRappelsCreationColumns();

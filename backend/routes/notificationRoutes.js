@@ -15,4 +15,7 @@ router.put('/mark-all-read', verifyToken, notificationController.markAllAsRead);
 // Masquer (supprimer logiquement) une notification
 router.put('/:id/dismiss', verifyToken, notificationController.dismissNotification);
 
+// Renvoyer une notification
+router.put('/:id/resend', verifyToken, notificationController.resendNotification);
+
 module.exports = router;

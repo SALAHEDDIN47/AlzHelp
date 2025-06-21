@@ -11,7 +11,9 @@ const ensureNotificationTableExists = async () => {
       message TEXT NOT NULL,
       is_read BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-      is_dismissed BOOLEAN DEFAULT FALSE
+      is_dismissed BOOLEAN DEFAULT FALSE,
+      resend BOOLEAN DEFAULT FALSE,
+      date_resend TIMESTAMP WITH TIME ZONE
     );
   `;
   try {
@@ -25,6 +27,26 @@ const ensureNotificationTableExists = async () => {
     
     if (columnCheck.rowCount === 0) {
         await pool.query('ALTER TABLE aidant_notifications ADD COLUMN is_dismissed BOOLEAN DEFAULT FALSE');
+    }
+
+    // Vérifier si la colonne resend existe, sinon l'ajouter
+    const resendCheck = await pool.query(`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='aidant_notifications' AND column_name='resend'
+    `);
+    
+    if (resendCheck.rowCount === 0) {
+        await pool.query('ALTER TABLE aidant_notifications ADD COLUMN resend BOOLEAN DEFAULT FALSE');
+    }
+
+    // Vérifier si la colonne date_resend existe, sinon l'ajouter
+    const dateResendCheck = await pool.query(`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='aidant_notifications' AND column_name='date_resend'
+    `);
+    
+    if (dateResendCheck.rowCount === 0) {
+        await pool.query('ALTER TABLE aidant_notifications ADD COLUMN date_resend TIMESTAMP WITH TIME ZONE');
     }
 
   } catch (error) {
@@ -230,22 +252,37 @@ const markAllAsRead = async (req, res) => {
 // Fonction pour masquer (supprimer logiquement) une notification
 const dismissNotification = async (req, res) => {
     try {
+        const { id } = req.params;
         const id_aidant = req.userId;
-        const { id } = req.params; // ID de la notification
-
-        const result = await pool.query(
+        
+        await pool.query(
             'UPDATE aidant_notifications SET is_dismissed = TRUE WHERE id = $1 AND id_aidant = $2',
             [id, id_aidant]
         );
-
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: 'Notification non trouvée ou non autorisée.' });
-        }
-
-        res.status(200).json({ success: true, message: 'Notification masquée.' });
+        
+        res.json({ success: true, message: 'Notification masquée avec succès' });
     } catch (error) {
-        console.error('Erreur dismissNotification:', error);
-        res.status(500).json({ error: 'Erreur serveur.' });
+        console.error('Erreur lors du masquage de la notification:', error);
+        res.status(500).json({ error: 'Erreur lors du masquage de la notification' });
+    }
+};
+
+// Fonction pour renvoyer une notification
+const resendNotification = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const id_aidant = req.userId;
+        
+        // Mettre à jour la notification pour indiquer qu'elle a été renvoyée
+        await pool.query(
+            'UPDATE aidant_notifications SET resend = TRUE, date_resend = CURRENT_TIMESTAMP WHERE id = $1 AND id_aidant = $2',
+            [id, id_aidant]
+        );
+        
+        res.json({ success: true, message: 'Notification renvoyée avec succès' });
+    } catch (error) {
+        console.error('Erreur lors du renvoi de la notification:', error);
+        res.status(500).json({ error: 'Erreur lors du renvoi de la notification' });
     }
 };
 
@@ -257,5 +294,6 @@ module.exports = {
   getNotificationsForAidant,
   getUnreadCount,
   markAllAsRead,
-  dismissNotification
+  dismissNotification,
+  resendNotification
 }; 

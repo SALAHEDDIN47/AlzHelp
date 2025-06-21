@@ -19,6 +19,18 @@ export default function AccueilAidant() {
   const [notificationCount, setNotificationCount] = useState(0);
   const router = useRouter();
 
+  useEffect(() => {
+    fetchAidantAndPatients();
+    fetchNotificationCount();
+    
+    // Rafraîchir les notifications toutes les 30 secondes
+    const interval = setInterval(() => {
+      fetchNotificationCount();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchAidantAndPatients = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
@@ -42,18 +54,18 @@ export default function AccueilAidant() {
       });
       if (resPatients.ok) {
         const data = await resPatients.json();
-        
-        // Trier les patients par date d'ajout (le plus récent en premier)
-        const sortedPatients = data.sort((a, b) => {
-          // Utiliser accompagnement_created_at pour trier par date d'ajout de l'accompagnement
-          if (a.accompagnement_created_at && b.accompagnement_created_at) {
-            return new Date(b.accompagnement_created_at) - new Date(a.accompagnement_created_at);
-          }
-          // Par défaut, on garde l'ordre d'arrivée (les plus récents en premier)
-          return 0;
-        });
-        
-        setPatients(sortedPatients);
+      
+      // Trier les patients par date d'ajout (le plus récent en premier)
+      const sortedPatients = data.sort((a, b) => {
+        // Utiliser accompagnement_created_at pour trier par date d'ajout de l'accompagnement
+        if (a.accompagnement_created_at && b.accompagnement_created_at) {
+          return new Date(b.accompagnement_created_at) - new Date(a.accompagnement_created_at);
+        }
+        // Par défaut, on garde l'ordre d'arrivée (les plus récents en premier)
+        return 0;
+      });
+      
+      setPatients(sortedPatients);
       }
     } catch (e) {
       console.error(e);
@@ -66,24 +78,44 @@ export default function AccueilAidant() {
     try {
       const token = await AsyncStorage.getItem("token");
       if (!token) return;
-      const response = await fetch(`${BASE_URL}/api/notifications/unread-count`, {
+
+      // Récupérer le nombre de notifications de rappels
+      const notificationsResponse = await fetch(`${BASE_URL}/api/notifications`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (response.ok) {
-        const data = await response.json();
-        setNotificationCount(data.count);
+      
+      // Récupérer le nombre de modifications de profil aidant en attente
+      const aidantModificationsResponse = await fetch(`${BASE_URL}/api/profile-modifications/pending`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      // Récupérer le nombre de modifications de profil patient en attente
+      const patientModificationsResponse = await fetch(`${BASE_URL}/api/patient-profile-modifications/pending`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      let totalCount = 0;
+
+      if (notificationsResponse.ok) {
+        const notifications = await notificationsResponse.json();
+        totalCount += notifications.length;
       }
+
+      if (aidantModificationsResponse.ok) {
+        const aidantModifications = await aidantModificationsResponse.json();
+        totalCount += (aidantModifications.modifications || []).length;
+      }
+
+      if (patientModificationsResponse.ok) {
+        const patientModifications = await patientModificationsResponse.json();
+        totalCount += (patientModifications.modifications || []).length;
+      }
+
+      setNotificationCount(totalCount);
     } catch (error) {
-      console.error("Erreur fetchNotificationCount:", error);
+      console.error('Erreur récupération compteur notifications:', error);
     }
   };
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchAidantAndPatients();
-      fetchNotificationCount();
-    }, [])
-  );
 
   const handlePatientPress = (item) => {
     setSelectedPatient(item);

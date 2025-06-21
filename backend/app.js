@@ -16,6 +16,8 @@ const medicalEventRoutes = require('./routes/medicalEventRoutes');
 const rappelsRoutes = require('./routes/rappelsRoutes'); // Import des routes
 const notificationRoutes = require('./routes/notificationRoutes'); // Import des routes de notification
 const accompagnementRoutes = require('./routes/accompagnementsRoutes');
+const profileModificationRoutes = require('./routes/profileModificationRoutes'); // Import des routes de modification de profil
+const patientProfileModificationRoutes = require('./routes/patientProfileModificationRoutes'); // Import des routes de modification de profil patient
 const { exec } = require('child_process');
 const cron = require('node-cron');
 const { checkReminderConfirmations } = require('./cronJob.js');
@@ -63,6 +65,8 @@ app.use('/api/medical-events', medicalEventRoutes);
 app.use('/api/rappels', rappelsRoutes);
 app.use('/api/accompagnements', accompagnementRoutes);
 app.use('/api/notifications', notificationRoutes); // Route pour les notifications
+app.use('/api/profile-modifications', profileModificationRoutes); // Route pour les modifications de profil aidant
+app.use('/api/patient-profile-modifications', patientProfileModificationRoutes); // Route pour les modifications de profil patient
 
 // Tâche CRON pour vérifier les confirmations de rappel toutes les minutes
 cron.schedule('* * * * *', async () => {

@@ -221,16 +221,16 @@ export default function RappelNotification({
         const message = getPersonalizedMessage(rappel);
         
         Speech.speak(message, {
-            language: 'fr-FR',
-            rate: 0.8,
-            pitch: 1.0,
+        language: 'fr-FR',
+        rate: 0.8,
+        pitch: 1.0,
             onDone: resolve, // Résout la promesse quand la lecture est finie
             onStopped: resolve, // Également en cas d'arrêt manuel
-            onError: (error) => {
-              console.error('Erreur synthèse vocale:', error);
+        onError: (error) => {
+          console.error('Erreur synthèse vocale:', error);
               resolve(); // Résout pour ne pas bloquer la boucle
-            }
-        });
+        }
+      });
     });
   };
 
@@ -334,7 +334,7 @@ export default function RappelNotification({
               {/* Informations de l'aidant avec lien familial */}
               {aidantInfo && (
                 <View style={{alignItems: 'flex-start', marginTop: 5}}>
-                  <View style={styles.detailRow}>
+                <View style={styles.detailRow}>
                     <Ionicons name="person" size={16} color="#666" />
                     <Text style={styles.detailText}>
                       Créé par {aidantInfo.prenomaidant} {aidantInfo.nomaidant}

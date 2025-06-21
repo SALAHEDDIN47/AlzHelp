@@ -422,7 +422,7 @@ function AnalogClock({ date, size = 90 }) {
       
       // Afficher la notification pour le premier rappel trouvé
       setCurrentRappel(currentRappels[0]);
-      setShowNotification(true);
+    setShowNotification(true);
       
       console.log('✅ État de la notification mis à jour:');
       console.log('   - currentRappel:', currentRappels[0]);
@@ -478,8 +478,8 @@ function AnalogClock({ date, size = 90 }) {
 
       if (response.ok) {
         console.log('Rappel confirmé avec succès');
-        setShowNotification(false);
-        setCurrentRappel(null);
+    setShowNotification(false);
+    setCurrentRappel(null);
         
         // Arrêter le son de notification
         await stopNotificationSound();

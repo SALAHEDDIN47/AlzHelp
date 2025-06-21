@@ -30,7 +30,7 @@ async function notifyAidants(rappelId, isConfirmed) {
       WHERE r.id_rappel = $1
     `;
     const rappelResult = await pool.query(rappelQuery, [rappelId]);
-    
+
     if (rappelResult.rows.length === 0) {
       console.error('Rappel non trouvé:', rappelId);
       return;
@@ -246,8 +246,8 @@ exports.createRappel = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO rappels
-       (id_patient, description, type_rappel, date_rappel, heure_rappel, confirmer_rappel, favori)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+       (id_patient, description, type_rappel, date_rappel, heure_rappel, confirmer_rappel, favori, date_creation_rappel, heure_creation_rappel)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,CURRENT_DATE,CURRENT_TIME) RETURNING *`,
       [id_patient, description, type_rappel, date_rappel, heure_rappel, confirmer_rappel, favori]
     );
 
@@ -272,7 +272,8 @@ exports.updateRappel = async (req, res) => {
     const result = await pool.query(
       `UPDATE rappels 
        SET description = $1, type_rappel = $2, date_rappel = $3, heure_rappel = $4, confirmer_rappel = $5, favori = $6,
-           notification_envoyee = false, derniere_notification = NULL
+           notification_envoyee = false, derniere_notification = NULL,
+           date_creation_rappel = CURRENT_DATE, heure_creation_rappel = CURRENT_TIME
        WHERE id_rappel = $7 
        RETURNING *`,
       [description, type_rappel, date_rappel, heure_rappel, confirmer_rappel, favori, id]
@@ -417,6 +418,14 @@ exports.resendRappel = async (req, res) => {
     if (accompagnementResult.rows.length === 0) {
       return res.status(403).json({ error: 'Vous n\'êtes pas autorisé à renvoyer ce rappel' });
     }
+
+    // Mettre à jour les colonnes resend et date_resend dans la table aidant_notifications
+    const updateNotificationQuery = `
+      UPDATE aidant_notifications 
+      SET resend = TRUE, date_resend = CURRENT_TIMESTAMP 
+      WHERE id_rappel = $1 AND id_aidant = $2
+    `;
+    await pool.query(updateNotificationQuery, [id_rappel, aidantId]);
 
     // Récupérer le token du patient
     const patientTokenQuery = `
